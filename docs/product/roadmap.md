@@ -1,7 +1,7 @@
 # 智能简历填写助手 Roadmap
 
 - 更新日期：2026-09-02
-- 状态：项目初始化中
+- 状态：M0 基础设施已完成，准备进入 F001
 - 产品基线：`docs/product/product-brief-v1.md`
 - 开发规范：`AGENTS.md`、`.specify/memory/constitution.md`
 
@@ -30,7 +30,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 | 根目录 `AGENTS.md` | Done | 已记录编码 Agent、运行时安全和 Git 规范 |
 | Constitution | Done | v1.0.0，已写入项目原则 |
 | Roadmap | Done | 已建立项目级里程碑、Feature 顺序、依赖和状态规则 |
-| Git/GitHub 初始化 | Implementing | 本地 Git 已初始化；远程仓库连接待配置 |
+| Git/GitHub 初始化 | Done | 已创建公开仓库并推送 `main`：`lxy-2001/resume-form-assistant` |
 | 最小代码骨架 | Done | 已建立扩展、本地服务、共享契约和测试目录 |
 | 第一个 Feature | Planned | F001 本地资料库 |
 
@@ -44,7 +44,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 | Feature | 状态 | 依赖 | 交付物 |
 | --- | --- | --- | --- |
-| F000 项目初始化与 Git/GitHub | Implementing | 无 | Git 仓库、远程仓库、分支和检查约定 |
+| F000 项目初始化与 Git/GitHub | Done | 无 | Git 仓库、远程仓库、分支和检查约定 |
 | F000A 最小代码骨架与共享契约 | Done | F000（本地基线） | 扩展、本地服务、契约和测试目录 |
 
 ### M1 本地资料库与资料解析
@@ -121,12 +121,12 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 ## 当前重点与下一步
 
-当前阶段是 **M0 项目基础设施**。按顺序推进：
+当前阶段是 **M0 已完成，准备进入 M1**。按顺序推进：
 
-1. 配置 GitHub 远程仓库并推送 `main` 基础提交；
-2. 创建 `feat/F001-profile-library` 分支；
-3. 为 F001 依次完成 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
-4. 通过测试驱动实现 F001，并在完成后创建 Pull Request。
+1. 创建 `feat/F001-profile-library` 分支；
+2. 为 F001 依次完成 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
+3. 通过测试驱动实现 F001，并在完成后创建 Pull Request；
+4. 合并后更新本 Roadmap，再开始 F002。
 
 ## 变更规则
 
