@@ -1,7 +1,7 @@
 # 智能简历填写助手 Roadmap
 
 - 更新日期：2026-09-02
-- 状态：M0 基础设施已完成，准备进入 F001
+- 状态：M0 基础设施已完成，F001 处于 Specifying
 - 产品基线：`docs/product/product-brief-v1.md`
 - 开发规范：`AGENTS.md`、`.specify/memory/constitution.md`
 
@@ -32,7 +32,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 | Roadmap | Done | 已建立项目级里程碑、Feature 顺序、依赖和状态规则 |
 | Git/GitHub 初始化 | Done | 已创建公开仓库并推送 `main`：`lxy-2001/resume-form-assistant` |
 | 最小代码骨架 | Done | 已建立扩展、本地服务、共享契约和测试目录 |
-| 第一个 Feature | Planned | F001 本地资料库 |
+| 第一个 Feature | Specifying | F001 本地资料库，已创建规格分支并开始 SDD |
 
 ## 里程碑与 Feature
 
@@ -55,8 +55,8 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 | Feature | 状态 | 依赖 | 交付物 |
 | --- | --- | --- | --- |
-| F001 本地资料库：手动录入与编辑 | Planned | F000A | 本地资料、字段类型、加密存储和基础测试 |
-| F002 文档解析：PDF/Word/OCR | Planned | F001 | 原文提取、OCR、来源、置信度和待确认结果 |
+| F001 本地资料库：手动录入与编辑 | Specifying | F000A | 正在完成 spec、plan、tasks；目标为本地资料、字段类型、加密存储和基础测试 |
+| F002 文档解析：PDF/Word/OCR | Planned | F001 | 原文提取、OCR、结构化导入、来源、置信度和待确认结果 |
 | F003 资料标准化与人工纠正 | Planned | F002 | Agent 归类、规则校验、合并和纠正流程 |
 
 ### M2 浏览器页面识别
@@ -121,10 +121,10 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 ## 当前重点与下一步
 
-当前阶段是 **M0 已完成，准备进入 M1**。按顺序推进：
+当前阶段是 **M1，F001 正在进行规格设计**。按顺序推进：
 
-1. 创建 `feat/F001-profile-library` 分支；
-2. 为 F001 依次完成 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
+1. 已创建 `feat/F001-profile-library` 分支；
+2. 正在为 F001 依次完成 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
 3. 通过测试驱动实现 F001，并在完成后创建 Pull Request；
 4. 合并后更新本 Roadmap，再开始 F002。
 
