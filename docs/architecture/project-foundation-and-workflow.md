@@ -95,11 +95,16 @@
 ├─ adapters/
 │  ├─ examples/                  # 可公开的示例适配配置
 │  └─ local/                     # 本机用户配置，不提交真实资料
+├─ specs/                         # SDD Feature 规格（每个 Feature 一个目录）
+│  └─ 001-profile-library/
+│     ├─ spec.md
+│     ├─ plan.md
+│     └─ tasks.md
 ├─ docs/
-│  ├─ product/                   # 产品 Brief 和范围
+│  ├─ product/                   # 产品 Brief、范围和 Roadmap
 │  ├─ architecture/              # 架构说明
 │  ├─ adr/                       # 重要技术决策记录
-│  └─ superpowers/specs/         # SDD 和讨论规格
+│  └─ discussions/               # 头脑风暴和历史讨论
 └─ tests/
    └─ e2e/                       # 扩展 + 本地服务的端到端测试
 ```
