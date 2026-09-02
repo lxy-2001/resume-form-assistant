@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# JavaScript / browser extension
+node_modules/
+dist/
+build/
+coverage/
+.parcel-cache/
+
+# Local configuration, secrets and runtime data
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.db
+*.sqlite
+*.sqlite3
+data/
+runtime-data/
+apps/local-agent/.data/
+adapters/local/
+
+# Personal or non-public test material
+packages/fixtures/private/
+tests/fixtures/private/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
