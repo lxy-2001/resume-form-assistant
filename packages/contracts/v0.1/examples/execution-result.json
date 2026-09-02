@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-fill-001",
+  "task_id": "task-page-001",
+  "operation": "fill.execute.result",
+  "task_state": "undoable",
+  "page": {
+    "url": "https://jobs.example.test/apply",
+    "origin": "https://jobs.example.test",
+    "title": "Example application form",
+    "form_id": "form-profile",
+    "step_id": "step-1"
+  },
+  "actions": [
+    {
+      "action_id": "action-full-name",
+      "page_field_id": "field-full-name",
+      "status": "applied",
+      "changed": true,
+      "previous_value": null
+    }
+  ],
+  "submitted": false,
+  "can_undo": true,
+  "undo_token": "undo-page-001",
+  "warnings": []
+}

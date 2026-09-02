@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-undo-001",
+  "task_id": "task-page-001",
+  "operation": "fill.undo.result",
+  "task_state": "completed",
+  "undo_token": "undo-page-001",
+  "actions": [
+    {
+      "action_id": "action-full-name",
+      "status": "restored",
+      "restored": true
+    }
+  ],
+  "restored": true,
+  "warnings": []
+}

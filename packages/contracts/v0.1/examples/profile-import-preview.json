@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-import-preview-001",
+  "task_id": "task-import-001",
+  "operation": "profile.import.preview.result",
+  "task_state": "awaiting_user_review",
+  "document_id": "doc-example-001",
+  "candidates": [
+    {
+      "candidate_id": "import-candidate-email",
+      "field_id": "contact.email",
+      "label": "邮箱",
+      "field_type": "email",
+      "value": "example@example.test",
+      "source": {
+        "kind": "import",
+        "document_ref": "doc-example-001",
+        "location": "page 1, contact section"
+      },
+      "confidence": 0.96,
+      "requires_confirmation": true,
+      "evidence": ["邮箱：example@example.test"],
+      "warnings": []
+    }
+  ],
+  "warnings": [],
+  "ocr_used": false,
+  "model_used": false,
+  "remote_data_sent": false,
+  "consent_recorded": false
+}

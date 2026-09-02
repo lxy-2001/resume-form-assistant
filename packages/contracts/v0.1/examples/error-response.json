@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-fill-001",
+  "task_id": "task-page-001",
+  "operation": "error",
+  "task_state": "failed",
+  "error": {
+    "code": "PAGE_CHANGED",
+    "message": "The page changed before the action could be applied.",
+    "retryable": true,
+    "details": {
+      "page_field_id": "field-full-name"
+    }
+  }
+}

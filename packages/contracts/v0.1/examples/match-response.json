@@ -1,0 +1,56 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-match-001",
+  "task_id": "task-page-001",
+  "operation": "page.match.result",
+  "task_state": "awaiting_user_review",
+  "model_used": false,
+  "remote_data_sent": false,
+  "consent_recorded": false,
+  "candidates": [
+    {
+      "candidate_id": "candidate-full-name",
+      "page_field_id": "field-full-name",
+      "profile_field_id": "person.full_name",
+      "value": "Example User",
+      "confidence": 0.99,
+      "source": {
+        "kind": "rule",
+        "profile_field_id": "person.full_name",
+        "detail": "exact standard-field label match"
+      },
+      "decision": "auto_fill",
+      "requires_confirmation": false,
+      "sensitivity": "normal",
+      "existing_value_conflict": false,
+      "reason": "The empty field label matches the standard full-name field.",
+      "warnings": []
+    },
+    {
+      "candidate_id": "candidate-id-number",
+      "page_field_id": "field-id-number",
+      "profile_field_id": "person.id_number",
+      "value": "EXAMPLE-IDENTIFIER",
+      "confidence": 0.74,
+      "source": {
+        "kind": "agent",
+        "profile_field_id": "person.id_number",
+        "detail": "semantic match requires user review"
+      },
+      "decision": "needs_confirmation",
+      "requires_confirmation": true,
+      "sensitivity": "highly_sensitive",
+      "existing_value_conflict": false,
+      "reason": "The label may refer to more than one kind of identity document.",
+      "warnings": [
+        {
+          "code": "SENSITIVE_CONFIRMATION_REQUIRED",
+          "message": "请确认证件字段及其用途。",
+          "severity": "warning"
+        }
+      ]
+    }
+  ],
+  "unsupported": [],
+  "warnings": []
+}

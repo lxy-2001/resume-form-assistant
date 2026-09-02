@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-scan-001",
+  "task_id": "task-page-001",
+  "operation": "page.scan.result",
+  "task_state": "candidates_ready",
+  "page": {
+    "url": "https://jobs.example.test/apply",
+    "origin": "https://jobs.example.test",
+    "title": "Example application form",
+    "form_id": "form-profile",
+    "step_id": "step-1"
+  },
+  "fields": [
+    {
+      "page_field_id": "field-full-name",
+      "label": "姓名",
+      "field_type": "text",
+      "locator": {
+        "strategy": "css",
+        "value": "#full-name"
+      },
+      "required": true,
+      "current_value_present": false,
+      "visible": true,
+      "editable": true
+    }
+  ],
+  "unsupported": [],
+  "warnings": []
+}

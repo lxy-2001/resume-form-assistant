@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-review-001",
+  "task_id": "task-page-001",
+  "operation": "review.submit",
+  "candidate_id": "candidate-full-name",
+  "decision": "modify",
+  "value": "Example User",
+  "persist": "application",
+  "user_confirmed": true,
+  "note": "Reviewed before filling this application step."
+}

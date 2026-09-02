@@ -9,6 +9,8 @@
 - `docs/product/product-brief-v1.md`
 - `docs/product/roadmap.md`
 - `docs/architecture/project-foundation-and-workflow.md`
+- `docs/architecture/ui-and-module-boundaries-v0.1.md`
+- `packages/contracts/v0.1/README.md`
 - `docs/discussions/2026-09-01-smart-resume-form-agent-discussion.md`
 - `AGENTS.md`
 - `.specify/memory/constitution.md`

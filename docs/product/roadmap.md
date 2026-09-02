@@ -32,6 +32,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 | Roadmap | Done | 已建立项目级里程碑、Feature 顺序、依赖和状态规则 |
 | Git/GitHub 初始化 | Done | 已创建公开仓库并推送 `main`：`lxy-2001/resume-form-assistant` |
 | 最小代码骨架 | Done | 已建立扩展、本地服务、共享契约和测试目录 |
+| 共享接口 v0.1 基线 | Reviewing | `docs/contracts-v0.1` 已完成 Schema、示例、测试和架构边界，待 Pull Request 审阅 |
 | 第一个 Feature | Planned | F001 本地资料库 |
 
 ## 里程碑与 Feature
