@@ -111,3 +111,7 @@ def test_custom_definition_rejects_false_custom_flag() -> None:
         CustomFieldDefinition(id="custom", label="Custom", field_type=FieldType.TEXT,
                               default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
                               is_custom=False, allowed_scopes=[Scope.GLOBAL], created_at=TS, updated_at=TS)
+
+def test_custom_field_value_roundtrips() -> None:
+    value = _field(id="custom-x", is_custom=True, label="Custom", field_type=FieldType.TEXT)
+    assert FieldValue.from_json(value.to_json()) == value
