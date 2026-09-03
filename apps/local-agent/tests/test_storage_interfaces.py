@@ -1,7 +1,10 @@
 from pathlib import Path
+
 from resume_agent.profile.models import ProfileSnapshot
 from resume_agent.storage.base import AtomicWriter, ProfileStore
 from resume_agent.storage.key_provider import KeyProvider
+
+
 class FakeStore:
     def __init__(self): self.written=[]; self.deleted=False
     def read(self): return self.written[-1] if self.written else None

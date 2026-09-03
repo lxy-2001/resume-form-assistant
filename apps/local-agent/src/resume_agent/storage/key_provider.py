@@ -1,4 +1,5 @@
 from typing import Protocol, runtime_checkable
+
 KeyMaterial = bytes
 @runtime_checkable
 class KeyProvider(Protocol):

@@ -1,8 +1,11 @@
 """Dependency-injection protocols for local profile persistence."""
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Protocol, runtime_checkable
+
 from resume_agent.profile.models import ProfileSnapshot
+
 
 @runtime_checkable
 class ProfileStore(Protocol):
