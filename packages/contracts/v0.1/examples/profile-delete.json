@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-profile-delete-001",
+  "task_id": "task-profile-delete-001",
+  "operation": "profile.delete",
+  "profile_id": "profile-main",
+  "expected_profile_version": 2,
+  "user_confirmed": true,
+  "selection": {
+    "field_ids": ["person.full_name"]
+  }
+}

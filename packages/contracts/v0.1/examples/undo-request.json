@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-undo-001",
+  "task_id": "task-page-001",
+  "operation": "fill.undo",
+  "undo_token": "undo-page-001",
+  "action_ids": ["action-full-name"],
+  "user_confirmed": true
+}
