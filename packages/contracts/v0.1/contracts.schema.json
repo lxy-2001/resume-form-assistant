@@ -1,0 +1,1617 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resume-form-assistant.dev/contracts/v0.1/contracts.schema.json",
+  "title": "Resume Form Assistant shared contracts v0.1",
+  "description": "The single machine-readable boundary between the browser extension and the local agent.",
+  "type": "object",
+  "oneOf": [
+    {"$ref": "#/$defs/ProfileUpsertRequest"},
+    {"$ref": "#/$defs/ProfileUpsertResponse"},
+    {"$ref": "#/$defs/ProfileReadRequest"},
+    {"$ref": "#/$defs/ProfileReadResponse"},
+    {"$ref": "#/$defs/ProfileDeleteRequest"},
+    {"$ref": "#/$defs/ProfileDeleteResponse"},
+    {"$ref": "#/$defs/ProfileExportRequest"},
+    {"$ref": "#/$defs/ProfileExportResponse"},
+    {"$ref": "#/$defs/ProfileImportPreviewRequest"},
+    {"$ref": "#/$defs/ProfileImportPreview"},
+    {"$ref": "#/$defs/ProfileImportConfirmRequest"},
+    {"$ref": "#/$defs/ProfileImportConfirmResponse"},
+    {"$ref": "#/$defs/ScanRequest"},
+    {"$ref": "#/$defs/ScanResponse"},
+    {"$ref": "#/$defs/MatchRequest"},
+    {"$ref": "#/$defs/MatchResponse"},
+    {"$ref": "#/$defs/ReviewDecision"},
+    {"$ref": "#/$defs/ReviewDecisionResponse"},
+    {"$ref": "#/$defs/FillPlan"},
+    {"$ref": "#/$defs/ExecutionResult"},
+    {"$ref": "#/$defs/UndoRequest"},
+    {"$ref": "#/$defs/UndoResult"},
+    {"$ref": "#/$defs/ErrorResponse"}
+  ],
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "Version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "NonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "JsonValue": {},
+    "FieldType": {
+      "type": "string",
+      "enum": [
+        "text",
+        "email",
+        "phone",
+        "date",
+        "year",
+        "number",
+        "boolean",
+        "enum",
+        "multivalue",
+        "rich_text",
+        "object"
+      ]
+    },
+    "Sensitivity": {
+      "type": "string",
+      "enum": ["normal", "sensitive", "highly_sensitive"]
+    },
+    "Scope": {
+      "type": "string",
+      "enum": ["global", "website", "application"]
+    },
+    "TaskState": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "scanning",
+        "candidates_ready",
+        "awaiting_user_review",
+        "executing",
+        "completed",
+        "partial",
+        "failed",
+        "undoable",
+        "cancelled"
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "import",
+            "rule",
+            "agent",
+            "user_correction",
+            "website_config"
+          ]
+        },
+        "profile_field_id": {"$ref": "#/$defs/Id"},
+        "document_ref": {"$ref": "#/$defs/Id"},
+        "location": {"$ref": "#/$defs/NonEmptyString"},
+        "detail": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "Warning": {
+      "type": "object",
+      "required": ["code", "message", "severity"],
+      "properties": {
+        "code": {"$ref": "#/$defs/NonEmptyString"},
+        "message": {"$ref": "#/$defs/NonEmptyString"},
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Locator": {
+      "type": "object",
+      "required": ["strategy", "value"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["css", "xpath", "label", "aria_label", "dom_path"]
+        },
+        "value": {"$ref": "#/$defs/NonEmptyString"},
+        "frame": {"$ref": "#/$defs/NonEmptyString"},
+        "index": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "PageOption": {
+      "type": "object",
+      "required": ["value", "label"],
+      "properties": {
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "selected": {"type": "boolean"},
+        "disabled": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "PageContext": {
+      "type": "object",
+      "required": ["url", "origin", "title"],
+      "properties": {
+        "url": {"type": "string", "format": "uri"},
+        "origin": {"type": "string", "format": "uri"},
+        "title": {"$ref": "#/$defs/NonEmptyString"},
+        "form_id": {"$ref": "#/$defs/Id"},
+        "step_id": {"$ref": "#/$defs/Id"},
+        "page_id": {"$ref": "#/$defs/Id"}
+      },
+      "additionalProperties": false
+    },
+    "Precondition": {
+      "type": "object",
+      "required": ["current_value_present"],
+      "properties": {
+        "current_value_present": {"type": "boolean"},
+        "expected_current_value": {"$ref": "#/$defs/JsonValue"},
+        "expected_value_hash": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"current_value_present": {"const": true}},
+            "required": ["current_value_present"]
+          },
+          "then": {
+            "anyOf": [
+              {"required": ["expected_current_value"]},
+              {"required": ["expected_value_hash"]}
+            ]
+          }
+        }
+      ]
+    },
+    "ValidationRule": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["email", "phone", "date", "year", "url", "postal_code"]
+        },
+        "pattern": {"type": "string"},
+        "min_length": {"type": "integer", "minimum": 0},
+        "max_length": {"type": "integer", "minimum": 0},
+        "minimum": {"type": "number"},
+        "maximum": {"type": "number"},
+        "allowed_values": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/JsonValue"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "Consent": {
+      "type": "object",
+      "required": ["remote_model_allowed"],
+      "properties": {
+        "remote_model_allowed": {"type": "boolean"},
+        "user_consented": {"type": "boolean"},
+        "purpose": {
+          "type": "string",
+          "enum": ["import", "matching", "generation", "review"]
+        },
+        "redaction_profile": {
+          "type": "string",
+          "enum": ["none", "minimal", "strict"]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"remote_model_allowed": {"const": true}},
+            "required": ["remote_model_allowed"]
+          },
+          "then": {
+            "required": ["user_consented", "purpose"],
+            "properties": {"user_consented": {"const": true}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"remote_model_allowed": {"const": false}},
+            "required": ["remote_model_allowed"]
+          },
+          "then": {
+            "properties": {"user_consented": {"const": false}}
+          }
+        }
+      ]
+    },
+    "RequestEnvelope": {
+      "type": "object",
+      "required": ["schema_version", "request_id", "task_id", "operation"],
+      "properties": {
+        "schema_version": {"$ref": "#/$defs/Version"},
+        "request_id": {"$ref": "#/$defs/Id"},
+        "task_id": {"$ref": "#/$defs/Id"},
+        "operation": {"$ref": "#/$defs/NonEmptyString"}
+      }
+    },
+    "ResponseEnvelope": {
+      "type": "object",
+      "required": ["schema_version", "request_id", "task_id", "operation"],
+      "properties": {
+        "schema_version": {"$ref": "#/$defs/Version"},
+        "request_id": {"$ref": "#/$defs/Id"},
+        "task_id": {"$ref": "#/$defs/Id"},
+        "operation": {"$ref": "#/$defs/NonEmptyString"},
+        "task_state": {"$ref": "#/$defs/TaskState"}
+      }
+    },
+    "ProfileField": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "field_type",
+        "value",
+        "scope",
+        "sensitivity",
+        "requires_confirmation",
+        "confirmed",
+        "source",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "field_type": {"$ref": "#/$defs/FieldType"},
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "scope": {"$ref": "#/$defs/Scope"},
+        "scope_context": {"$ref": "#/$defs/Id"},
+        "sensitivity": {"$ref": "#/$defs/Sensitivity"},
+        "requires_confirmation": {"type": "boolean"},
+        "confirmed": {"const": true},
+        "is_custom": {"type": "boolean"},
+        "aliases": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/NonEmptyString"}
+        },
+        "options": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/PageOption"}
+        },
+        "validation": {"$ref": "#/$defs/ValidationRule"},
+        "source": {"$ref": "#/$defs/Source"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"sensitivity": {"enum": ["sensitive", "highly_sensitive"]}},
+            "required": ["sensitivity"]
+          },
+          "then": {"properties": {"requires_confirmation": {"const": true}}}
+        },
+        {
+          "if": {
+            "properties": {"scope": {"enum": ["website", "application"]}},
+            "required": ["scope"]
+          },
+          "then": {"required": ["scope_context"]}
+        },
+        {
+          "if": {
+            "properties": {"scope": {"const": "global"}},
+            "required": ["scope"]
+          },
+          "then": {"not": {"required": ["scope_context"]}}
+        }
+      ]
+    },
+    "ProfileRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ProfileLifecycleOperation": {
+      "type": "string",
+      "enum": ["profile.read", "profile.upsert", "profile.delete", "profile.export"]
+    },
+    "ProfileLifecycleErrorCode": {
+      "type": "string",
+      "enum": [
+        "PROFILE_NOT_FOUND",
+        "CONFIRMATION_REQUIRED",
+        "STALE_PROFILE_VERSION",
+        "INVALID_PROFILE_SELECTION",
+        "INVALID_FIELD_VALUE",
+        "CUSTOM_FIELD_CONFLICT",
+        "STORAGE_UNAVAILABLE",
+        "STORAGE_CORRUPT_OR_UNRECOVERABLE",
+        "EXPORT_CANCELLED",
+        "EXPORT_FAILED",
+        "DELETE_FAILED",
+        "DELETE_PARTIAL"
+      ]
+    },
+    "ProfileFieldDefinition": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "field_type",
+        "default_sensitivity",
+        "requires_confirmation",
+        "is_custom",
+        "allowed_scopes"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "field_type": {"$ref": "#/$defs/FieldType"},
+        "default_sensitivity": {"$ref": "#/$defs/Sensitivity"},
+        "requires_confirmation": {"type": "boolean"},
+        "is_custom": {"type": "boolean"},
+        "allowed_scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Scope"}
+        },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/NonEmptyString"}
+        },
+        "options": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/PageOption"}
+        },
+        "validation": {"$ref": "#/$defs/ValidationRule"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "default_sensitivity": {"enum": ["sensitive", "highly_sensitive"]}
+            },
+            "required": ["default_sensitivity"]
+          },
+          "then": {"properties": {"requires_confirmation": {"const": true}}}
+        },
+        {
+          "if": {
+            "properties": {"is_custom": {"const": true}},
+            "required": ["is_custom"]
+          },
+          "then": {"required": ["created_at", "updated_at"]}
+        }
+      ]
+    },
+    "ProfileRecordType": {
+      "type": "string",
+      "enum": ["education", "work", "internship", "project"]
+    },
+    "ProfileRecord": {
+      "type": "object",
+      "required": [
+        "record_id",
+        "record_type",
+        "position",
+        "fields",
+        "confirmed",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/Id"},
+        "record_type": {"$ref": "#/$defs/ProfileRecordType"},
+        "position": {"type": "integer", "minimum": 0},
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/ProfileField"}
+        },
+        "confirmed": {"const": true},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "ProfileSnapshot": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "profile_version",
+        "is_empty",
+        "fields",
+        "records",
+        "field_definitions",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/Id"},
+        "profile_version": {"$ref": "#/$defs/ProfileRevision"},
+        "is_empty": {"type": "boolean"},
+        "fields": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ProfileField"}
+        },
+        "records": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ProfileRecord"}
+        },
+        "field_definitions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ProfileFieldDefinition"}
+        },
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"is_empty": {"const": true}},
+            "required": ["is_empty"]
+          },
+          "then": {
+            "properties": {
+              "fields": {"maxItems": 0},
+              "records": {"maxItems": 0}
+            }
+          },
+          "else": {
+            "anyOf": [
+              {"properties": {"fields": {"minItems": 1}}},
+              {"properties": {"records": {"minItems": 1}}}
+            ]
+          }
+        }
+      ]
+    },
+    "ProfileDeleteSelection": {
+      "type": "object",
+      "properties": {
+        "field_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Id"}
+        },
+        "record_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Id"}
+        },
+        "custom_field_definition_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Id"}
+        },
+        "delete_all": {"const": true}
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["delete_all"],
+          "not": {
+            "anyOf": [
+              {"required": ["field_ids"]},
+              {"required": ["record_ids"]},
+              {"required": ["custom_field_definition_ids"]}
+            ]
+          }
+        },
+        {
+          "not": {"required": ["delete_all"]},
+          "anyOf": [
+            {"required": ["field_ids"]},
+            {"required": ["record_ids"]},
+            {"required": ["custom_field_definition_ids"]}
+          ]
+        }
+      ]
+    },
+    "ProfileExportSelection": {
+      "type": "object",
+      "properties": {
+        "field_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Id"}
+        },
+        "record_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Id"}
+        },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Scope"}
+        },
+        "all_profile_data": {"const": true}
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["all_profile_data"],
+          "not": {
+            "anyOf": [
+              {"required": ["field_ids"]},
+              {"required": ["record_ids"]},
+              {"required": ["scopes"]}
+            ]
+          }
+        },
+        {
+          "not": {"required": ["all_profile_data"]},
+          "anyOf": [
+            {"required": ["field_ids"]},
+            {"required": ["record_ids"]},
+            {"required": ["scopes"]}
+          ]
+        }
+      ]
+    },
+    "LocalExportDestination": {
+      "type": "object",
+      "required": ["kind", "path", "overwrite_existing"],
+      "properties": {
+        "kind": {"const": "local_file"},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "allOf": [
+            {"not": {"pattern": "^[A-Za-z][A-Za-z0-9+.-]*://"}},
+            {"not": {"pattern": "^(?:\\\\\\\\|//)"}}
+          ]
+        },
+        "overwrite_existing": {"type": "boolean"},
+        "overwrite_confirmed": {"const": true}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"overwrite_existing": {"const": true}},
+            "required": ["overwrite_existing"]
+          },
+          "then": {"required": ["overwrite_confirmed"]}
+        }
+      ]
+    },
+    "ProfileReadRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "profile_id"],
+          "properties": {
+            "operation": {"const": "profile.read"},
+            "profile_id": {"$ref": "#/$defs/Id"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileReadResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "task_state", "profile", "warnings"],
+          "properties": {
+            "operation": {"const": "profile.read.result"},
+            "task_state": {"const": "completed"},
+            "profile": {"$ref": "#/$defs/ProfileSnapshot"},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileUpsertRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "expected_profile_version",
+            "user_confirmed"
+          ],
+          "properties": {
+            "operation": {"const": "profile.upsert"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "expected_profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "user_confirmed": {"const": true},
+            "fields": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/ProfileField"}
+            },
+            "delete_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "mode": {"type": "string", "enum": ["merge"]}
+          },
+          "anyOf": [
+            {"required": ["fields"], "properties": {"fields": {"minItems": 1}}},
+            {"required": ["delete_field_ids"], "properties": {"delete_field_ids": {"minItems": 1}}}
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileUpsertResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "profile_version",
+            "written_field_ids",
+            "deleted_field_ids",
+            "warnings"
+          ],
+          "properties": {
+            "operation": {"const": "profile.upsert.result"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "written_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "deleted_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileDeleteRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "expected_profile_version",
+            "user_confirmed",
+            "selection"
+          ],
+          "properties": {
+            "operation": {"const": "profile.delete"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "expected_profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "user_confirmed": {"const": true},
+            "selection": {"$ref": "#/$defs/ProfileDeleteSelection"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileDeleteResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "profile_version",
+            "task_state",
+            "deleted_field_ids",
+            "deleted_record_ids",
+            "deleted_custom_field_definition_ids",
+            "all_data_deleted",
+            "cleanup_pending",
+            "warnings"
+          ],
+          "properties": {
+            "operation": {"const": "profile.delete.result"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "task_state": {"type": "string", "enum": ["completed", "partial"]},
+            "deleted_field_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Id"}
+            },
+            "deleted_record_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Id"}
+            },
+            "deleted_custom_field_definition_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Id"}
+            },
+            "all_data_deleted": {"type": "boolean"},
+            "cleanup_pending": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["encrypted_snapshot", "key_reference"]
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {"task_state": {"const": "partial"}},
+                "required": ["task_state"]
+              },
+              "then": {
+                "properties": {
+                  "cleanup_pending": {"minItems": 1},
+                  "warnings": {"minItems": 1}
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {"task_state": {"const": "completed"}},
+                "required": ["task_state"]
+              },
+              "then": {"properties": {"cleanup_pending": {"maxItems": 0}}}
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileExportRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "expected_profile_version",
+            "user_confirmed",
+            "selection",
+            "format",
+            "destination"
+          ],
+          "properties": {
+            "operation": {"const": "profile.export"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "expected_profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "user_confirmed": {"const": true},
+            "selection": {"$ref": "#/$defs/ProfileExportSelection"},
+            "format": {"const": "json"},
+            "destination": {"$ref": "#/$defs/LocalExportDestination"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileExportResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "profile_id",
+            "profile_version",
+            "task_state",
+            "export_id",
+            "format",
+            "status",
+            "destination_display_name",
+            "exported_field_ids",
+            "exported_record_ids",
+            "exported_scopes",
+            "bytes_written",
+            "warnings"
+          ],
+          "properties": {
+            "operation": {"const": "profile.export.result"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "profile_version": {"$ref": "#/$defs/ProfileRevision"},
+            "task_state": {"const": "completed"},
+            "export_id": {"$ref": "#/$defs/Id"},
+            "format": {"const": "json"},
+            "status": {"const": "written"},
+            "destination_display_name": {"$ref": "#/$defs/NonEmptyString"},
+            "exported_field_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Id"}
+            },
+            "exported_record_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Id"}
+            },
+            "exported_scopes": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/Scope"}
+            },
+            "bytes_written": {"type": "integer", "minimum": 0},
+            "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "DocumentRef": {
+      "type": "object",
+      "required": ["document_id", "filename", "media_type"],
+      "properties": {
+        "document_id": {"$ref": "#/$defs/Id"},
+        "filename": {"$ref": "#/$defs/NonEmptyString"},
+        "media_type": {
+          "type": "string",
+          "enum": [
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain",
+            "image/png",
+            "image/jpeg"
+          ]
+        },
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "ProfileImportPreviewRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "source", "consent"],
+          "properties": {
+            "operation": {"const": "profile.import.preview"},
+            "source": {"$ref": "#/$defs/DocumentRef"},
+            "consent": {"$ref": "#/$defs/Consent"},
+            "ocr_mode": {"type": "string", "enum": ["auto", "never", "force"]}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileImportCandidate": {
+      "type": "object",
+      "required": [
+        "candidate_id",
+        "field_id",
+        "label",
+        "field_type",
+        "value",
+        "source",
+        "confidence",
+        "requires_confirmation",
+        "warnings"
+      ],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "field_id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "field_type": {"$ref": "#/$defs/FieldType"},
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "source": {"$ref": "#/$defs/Source"},
+        "confidence": {"$ref": "#/$defs/Confidence"},
+        "requires_confirmation": {"type": "boolean"},
+        "evidence": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/NonEmptyString"}
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/Warning"}
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {"requires_confirmation": {"const": true}}
+        }
+      ]
+    },
+    "ProfileImportPreview": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "document_id", "candidates", "warnings", "consent_recorded"],
+          "properties": {
+            "operation": {"const": "profile.import.preview.result"},
+            "document_id": {"$ref": "#/$defs/Id"},
+            "candidates": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/ProfileImportCandidate"}
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            },
+            "ocr_used": {"type": "boolean"},
+            "model_used": {"type": "boolean"},
+            "remote_data_sent": {"type": "boolean"},
+            "provider": {"$ref": "#/$defs/NonEmptyString"},
+            "consent_recorded": {"type": "boolean"}
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {"remote_data_sent": {"const": true}},
+                "required": ["remote_data_sent"]
+              },
+              "then": {
+                "required": ["provider"],
+                "properties": {"consent_recorded": {"const": true}}
+              }
+            },
+            {
+              "if": {
+                "properties": {"remote_data_sent": {"const": false}},
+                "required": ["remote_data_sent"]
+              },
+              "then": {"properties": {"consent_recorded": {"const": false}}}
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ImportDecision": {
+      "type": "object",
+      "required": ["candidate_id", "decision", "user_confirmed"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "decision": {"type": "string", "enum": ["accept", "modify", "reject"]},
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "target_scope": {"$ref": "#/$defs/Scope"},
+        "user_confirmed": {"const": true}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"decision": {"const": "modify"}}, "required": ["decision"]},
+          "then": {"required": ["value"]}
+        },
+        {
+          "if": {"properties": {"decision": {"enum": ["reject"]}}, "required": ["decision"]},
+          "then": {"not": {"required": ["value"]}}
+        }
+      ]
+    },
+    "ProfileImportConfirmRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "decisions"],
+          "properties": {
+            "operation": {"const": "profile.import.confirm"},
+            "decisions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/ImportDecision"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileImportConfirmResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "written_field_ids", "rejected_candidate_ids", "warnings"],
+          "properties": {
+            "operation": {"const": "profile.import.confirm.result"},
+            "written_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "rejected_candidate_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "PageField": {
+      "type": "object",
+      "required": [
+        "page_field_id",
+        "label",
+        "field_type",
+        "locator",
+        "required",
+        "current_value_present",
+        "visible",
+        "editable"
+      ],
+      "properties": {
+        "page_field_id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "field_type": {"$ref": "#/$defs/FieldType"},
+        "locator": {"$ref": "#/$defs/Locator"},
+        "required": {"type": "boolean"},
+        "current_value_present": {"type": "boolean"},
+        "current_value": {"$ref": "#/$defs/JsonValue"},
+        "visible": {"type": "boolean"},
+        "editable": {"type": "boolean"},
+        "multiple": {"type": "boolean"},
+        "options": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/PageOption"}
+        },
+        "sensitivity_hint": {"$ref": "#/$defs/Sensitivity"},
+        "autocomplete": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"current_value_present": {"const": true}},
+            "required": ["current_value_present"]
+          },
+          "then": {"required": ["current_value"]}
+        }
+      ]
+    },
+    "ScanRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "page", "fields"],
+          "properties": {
+            "operation": {"const": "page.scan"},
+            "page": {"$ref": "#/$defs/PageContext"},
+            "fields": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/PageField"}
+            },
+            "include_current_values": {"type": "boolean"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "UnsupportedField": {
+      "type": "object",
+      "required": ["page_field_id", "label", "locator", "reason", "manual_action"],
+      "properties": {
+        "page_field_id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "locator": {"$ref": "#/$defs/Locator"},
+        "reason": {"$ref": "#/$defs/NonEmptyString"},
+        "manual_action": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "ScanResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "page", "fields", "unsupported", "warnings"],
+          "properties": {
+            "operation": {"const": "page.scan.result"},
+            "page": {"$ref": "#/$defs/PageContext"},
+            "fields": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/PageField"}
+            },
+            "unsupported": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/UnsupportedField"}
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "MatchRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "page", "fields", "profile_field_ids", "consent"],
+          "properties": {
+            "operation": {"const": "page.match"},
+            "page": {"$ref": "#/$defs/PageContext"},
+            "fields": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/PageField"}
+            },
+            "profile_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "consent": {"$ref": "#/$defs/Consent"},
+            "matching_mode": {"type": "string", "enum": ["rules", "hybrid", "agent"]}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "MatchCandidate": {
+      "type": "object",
+      "required": [
+        "candidate_id",
+        "page_field_id",
+        "value",
+        "confidence",
+        "source",
+        "decision",
+        "requires_confirmation",
+        "sensitivity",
+        "reason",
+        "warnings"
+      ],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "page_field_id": {"$ref": "#/$defs/Id"},
+        "profile_field_id": {"$ref": "#/$defs/Id"},
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "confidence": {"$ref": "#/$defs/Confidence"},
+        "source": {"$ref": "#/$defs/Source"},
+        "decision": {
+          "type": "string",
+          "enum": ["auto_fill", "needs_confirmation", "skip", "unsupported"]
+        },
+        "requires_confirmation": {"type": "boolean"},
+        "sensitivity": {"$ref": "#/$defs/Sensitivity"},
+        "existing_value_conflict": {"type": "boolean"},
+        "reason": {"$ref": "#/$defs/NonEmptyString"},
+        "warnings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/Warning"}
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"decision": {"const": "needs_confirmation"}},
+            "required": ["decision"]
+          },
+          "then": {"properties": {"requires_confirmation": {"const": true}}}
+        },
+        {
+          "if": {
+            "properties": {"sensitivity": {"enum": ["sensitive", "highly_sensitive"]}},
+            "required": ["sensitivity"]
+          },
+          "then": {
+            "properties": {
+              "decision": {"const": "needs_confirmation"},
+              "requires_confirmation": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"decision": {"const": "auto_fill"}},
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {"requires_confirmation": {"const": false}}
+          }
+        }
+      ]
+    },
+    "MatchResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "candidates", "unsupported", "warnings", "model_used", "remote_data_sent", "consent_recorded"],
+          "properties": {
+            "operation": {"const": "page.match.result"},
+            "candidates": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/MatchCandidate"}
+            },
+            "unsupported": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/UnsupportedField"}
+            },
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            },
+            "model_used": {"type": "boolean"},
+            "provider": {"$ref": "#/$defs/NonEmptyString"},
+            "remote_data_sent": {"type": "boolean"},
+            "consent_recorded": {"type": "boolean"},
+            "redacted_fields": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"}
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {"remote_data_sent": {"const": true}},
+                "required": ["remote_data_sent"]
+              },
+              "then": {"required": ["provider"], "properties": {"consent_recorded": {"const": true}}}
+            },
+            {
+              "if": {
+                "properties": {"remote_data_sent": {"const": false}},
+                "required": ["remote_data_sent"]
+              },
+              "then": {"properties": {"consent_recorded": {"const": false}}}
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "FillAction": {
+      "type": "object",
+      "required": [
+        "action_id",
+        "page_field_id",
+        "locator",
+        "operation",
+        "value",
+        "precondition",
+        "approved"
+      ],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/Id"},
+        "page_field_id": {"$ref": "#/$defs/Id"},
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "locator": {"$ref": "#/$defs/Locator"},
+        "operation": {
+          "type": "string",
+          "enum": [
+            "set_text",
+            "set_date",
+            "set_number",
+            "select_option",
+            "set_checked",
+            "set_unchecked",
+            "set_radio"
+          ]
+        },
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "precondition": {"$ref": "#/$defs/Precondition"},
+        "approved": {"const": true},
+        "sensitivity": {"$ref": "#/$defs/Sensitivity"}
+      },
+      "additionalProperties": false
+    },
+    "FillPlan": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": [
+            "operation",
+            "page",
+            "actions",
+            "auto_submit",
+            "policy_checked",
+            "user_confirmed",
+            "warnings"
+          ],
+          "properties": {
+            "operation": {"const": "fill.execute"},
+            "page": {"$ref": "#/$defs/PageContext"},
+            "actions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/FillAction"}
+            },
+            "auto_submit": {"const": false},
+            "policy_checked": {"const": true},
+            "user_confirmed": {"const": true},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            },
+            "expires_at": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ReviewDecision": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "candidate_id", "decision", "user_confirmed"],
+          "properties": {
+            "operation": {"const": "review.submit"},
+            "candidate_id": {"$ref": "#/$defs/Id"},
+            "decision": {"type": "string", "enum": ["accept", "modify", "skip", "reject"]},
+            "value": {"$ref": "#/$defs/JsonValue"},
+            "persist": {"type": "string", "enum": ["none", "application", "profile", "website"]},
+            "user_confirmed": {"const": true},
+            "note": {"$ref": "#/$defs/NonEmptyString"}
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {"decision": {"const": "modify"}},
+                "required": ["decision"]
+              },
+              "then": {"required": ["value"]}
+            },
+            {
+              "if": {
+                "properties": {"decision": {"enum": ["skip", "reject"]}},
+                "required": ["decision"]
+              },
+              "then": {"not": {"required": ["value"]}}
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ReviewDecisionResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "candidate_id", "accepted", "warnings"],
+          "properties": {
+            "operation": {"const": "review.submit.result"},
+            "candidate_id": {"$ref": "#/$defs/Id"},
+            "accepted": {"type": "boolean"},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ExecutionActionResult": {
+      "type": "object",
+      "required": ["action_id", "page_field_id", "status", "changed"],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/Id"},
+        "page_field_id": {"$ref": "#/$defs/Id"},
+        "status": {
+          "type": "string",
+          "enum": ["applied", "skipped", "failed", "unsupported"]
+        },
+        "changed": {"type": "boolean"},
+        "previous_value": {"$ref": "#/$defs/JsonValue"},
+        "error_code": {"$ref": "#/$defs/NonEmptyString"},
+        "message": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"enum": ["failed", "unsupported"]}},
+            "required": ["status"]
+          },
+          "then": {"required": ["message"]}
+        }
+      ]
+    },
+    "ExecutionResult": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "page", "actions", "submitted", "can_undo", "warnings"],
+          "properties": {
+            "operation": {"const": "fill.execute.result"},
+            "page": {"$ref": "#/$defs/PageContext"},
+            "actions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/ExecutionActionResult"}
+            },
+            "submitted": {"const": false},
+            "can_undo": {"type": "boolean"},
+            "undo_token": {"$ref": "#/$defs/Id"},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"can_undo": {"const": true}}, "required": ["can_undo"]},
+              "then": {"required": ["undo_token"]}
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "UndoRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "undo_token", "user_confirmed"],
+          "properties": {
+            "operation": {"const": "fill.undo"},
+            "undo_token": {"$ref": "#/$defs/Id"},
+            "action_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "user_confirmed": {"const": true}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "UndoActionResult": {
+      "type": "object",
+      "required": ["action_id", "status", "restored"],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/Id"},
+        "status": {"type": "string", "enum": ["restored", "skipped", "failed"]},
+        "restored": {"type": "boolean"},
+        "message": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "UndoResult": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "undo_token", "actions", "restored", "warnings"],
+          "properties": {
+            "operation": {"const": "fill.undo.result"},
+            "undo_token": {"$ref": "#/$defs/Id"},
+            "actions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/UndoActionResult"}
+            },
+            "restored": {"type": "boolean"},
+            "warnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Warning"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Z0-9_:-]+$"
+        },
+        "message": {"$ref": "#/$defs/NonEmptyString"},
+        "retryable": {"type": "boolean"},
+        "details": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/JsonValue"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "ErrorResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "error"],
+          "properties": {
+            "operation": {"const": "error"},
+            "failed_operation": {"$ref": "#/$defs/ProfileLifecycleOperation"},
+            "error": {"$ref": "#/$defs/Error"}
+          },
+          "allOf": [
+            {
+              "if": {"required": ["failed_operation"]},
+              "then": {
+                "properties": {
+                  "error": {
+                    "allOf": [
+                      {"$ref": "#/$defs/Error"},
+                      {
+                        "type": "object",
+                        "required": ["code"],
+                        "properties": {
+                          "code": {"$ref": "#/$defs/ProfileLifecycleErrorCode"}
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

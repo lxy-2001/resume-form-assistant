@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-fill-001",
+  "task_id": "task-page-001",
+  "operation": "fill.execute",
+  "page": {
+    "url": "https://jobs.example.test/apply",
+    "origin": "https://jobs.example.test",
+    "title": "Example application form",
+    "form_id": "form-profile",
+    "step_id": "step-1"
+  },
+  "actions": [
+    {
+      "action_id": "action-full-name",
+      "page_field_id": "field-full-name",
+      "candidate_id": "candidate-full-name",
+      "locator": {
+        "strategy": "css",
+        "value": "#full-name"
+      },
+      "operation": "set_text",
+      "value": "Example User",
+      "precondition": {
+        "current_value_present": false
+      },
+      "approved": true,
+      "sensitivity": "normal"
+    }
+  ],
+  "auto_submit": false,
+  "policy_checked": true,
+  "user_confirmed": true,
+  "warnings": []
+}

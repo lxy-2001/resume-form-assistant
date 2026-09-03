@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-profile-delete-001",
+  "task_id": "task-profile-delete-001",
+  "operation": "profile.delete.result",
+  "task_state": "completed",
+  "profile_id": "profile-main",
+  "profile_version": 3,
+  "deleted_field_ids": ["person.full_name"],
+  "deleted_record_ids": [],
+  "deleted_custom_field_definition_ids": [],
+  "all_data_deleted": false,
+  "cleanup_pending": [],
+  "warnings": []
+}

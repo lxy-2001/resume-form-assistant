@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-import-confirm-001",
+  "task_id": "task-import-001",
+  "operation": "profile.import.confirm",
+  "decisions": [
+    {
+      "candidate_id": "import-candidate-email",
+      "decision": "accept",
+      "target_scope": "global",
+      "user_confirmed": true
+    }
+  ]
+}

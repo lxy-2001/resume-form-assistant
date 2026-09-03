@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-profile-export-001",
+  "task_id": "task-profile-export-001",
+  "operation": "profile.export",
+  "profile_id": "profile-main",
+  "expected_profile_version": 3,
+  "user_confirmed": true,
+  "selection": {
+    "all_profile_data": true
+  },
+  "format": "json",
+  "destination": {
+    "kind": "local_file",
+    "path": "C:\\Synthetic\\resume-profile-export.json",
+    "overwrite_existing": false
+  }
+}
