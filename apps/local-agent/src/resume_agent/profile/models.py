@@ -119,7 +119,7 @@ class FieldDefinition(Model):
 
 
 class StandardFieldDefinition(FieldDefinition):
-    is_custom: Literal[False] = False
+    is_custom: bool = False
 
 
 class CustomFieldDefinition(FieldDefinition):
@@ -147,7 +147,7 @@ class FieldValue(Model):
     confirmed: bool
     source: Source
     updated_at: datetime
-    is_custom: Literal[False] = False
+    is_custom: bool = False
     aliases: list[str] | None = None
     options: list[PageOption] | None = None
     validation: ValidationRule | None = None
@@ -204,6 +204,7 @@ class ProfileSnapshot(Model):
         elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
         return self
+
 
 
 
