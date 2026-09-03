@@ -95,3 +95,4 @@ def test_definition_subclasses_reject_conflicting_custom_flag() -> None:
                                 default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
                                 is_custom=True, allowed_scopes=[Scope.GLOBAL])
 
+
