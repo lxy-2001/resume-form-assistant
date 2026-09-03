@@ -105,3 +105,45 @@
 - [ ] **Step 4: 推送独立分支**
 
   推送 `docs/contracts-v0.1` 到远程，保留后续 Pull Request 审阅入口；不直接合并到 `main`。
+
+---
+
+### Task 5: 补齐 F001 资料生命周期契约
+
+**Files:**
+- Modify: `packages/contracts/v0.1/contracts.schema.json`
+- Modify: `packages/contracts/v0.1/README.md`
+- Create: `packages/contracts/v0.1/CHANGELOG.md`
+- Create: `packages/contracts/v0.1/examples/profile-read.json`
+- Create: `packages/contracts/v0.1/examples/profile-read-response.json`
+- Create: `packages/contracts/v0.1/examples/profile-delete.json`
+- Create: `packages/contracts/v0.1/examples/profile-delete-response.json`
+- Create: `packages/contracts/v0.1/examples/profile-export.json`
+- Create: `packages/contracts/v0.1/examples/profile-export-response.json`
+- Create: `tests/contracts/test_profile_lifecycle_contracts.py`
+
+**Interfaces:**
+- Consumes: `RequestEnvelope`、`ResponseEnvelope`、`ProfileField`、`Warning` 和 `ErrorResponse`。
+- Produces: `ProfileReadRequest/Response`、`ProfileDeleteRequest/Response`、`ProfileExportRequest/Response`，以及资料快照、重复记录、字段定义、显式选择范围和乐观版本字段。
+
+- [ ] **Step 1: 写失败的生命周期契约测试**
+
+  测试先锁定以下行为：六个请求/响应定义和示例存在；读取不要求确认且不能携带写入字段；删除和导出必须明确确认并带预期资料版本；空选择被拒绝；完整删除不能与局部选择混用；导出只能写入用户选择的本地文件，响应不能包含文件内容或上传地址。
+
+- [ ] **Step 2: 运行新增测试确认 RED**
+
+  运行：`python -m pytest tests/contracts/test_profile_lifecycle_contracts.py -q`
+
+  预期：因 `ProfileReadRequest` 等定义和示例尚不存在而失败，现有 33 个测试仍保持通过。
+
+- [ ] **Step 3: 添加资料生命周期公共类型和消息**
+
+  增加资料修订号、字段定义、已确认字段、重复记录、资料快照、删除选择、导出选择和本地导出目标。`profile.upsert` 同步携带 `profile_id`、`expected_profile_version`，响应返回新的 `profile_version`，避免 F001 私下增加版本字段。
+
+- [ ] **Step 4: 添加脱敏示例、错误码和版本记录**
+
+  六个新示例只使用合成数据；README 更新操作表、确认规则和稳定错误码；CHANGELOG 说明这些新增是 v0.1 内尚未发布的向后兼容契约补充。资料导出响应只返回状态和显示文件名，不返回明文内容或远程 URL。
+
+- [ ] **Step 5: 完整验证并更新 PR #1**
+
+  运行新增测试、全部契约测试、主 Schema 校验、敏感信息扫描和 `git diff --check`。验证通过后提交并推送 `docs/contracts-v0.1`，让现有 PR #1 自动更新；不直接合并到 `main`。
