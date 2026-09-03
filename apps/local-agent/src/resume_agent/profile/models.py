@@ -130,9 +130,10 @@ class FieldValue(Model):
     @model_validator(mode="before")
     @classmethod
     def accept_field_id(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "id" not in data and "field_id" in data:
+        if isinstance(data, dict) and "field_id" in data:
             data = dict(data)
-            data["id"] = data.pop("field_id")
+            data.setdefault("id", data["field_id"])
+            data.pop("field_id")
         return data
 
     id: str = Field(min_length=1, max_length=128)
@@ -203,6 +204,7 @@ class ProfileSnapshot(Model):
         elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
         return self
+
 
 
 
