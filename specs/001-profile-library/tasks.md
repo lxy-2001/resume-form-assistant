@@ -32,9 +32,9 @@ description: "Task list for F001 local profile library"
 - [x] T006 Verified the merged lifecycle schema, examples, operation table, and contract tests for `profile.read`, `profile.delete`, and `profile.export` in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/; 55 contract tests pass.
 - [x] T007 [P] Define Profile, field definitions, field values, repeatable records, scopes, and serialization boundaries in apps/local-agent/src/resume_agent/profile/models.py.
 - [x] T008 [P] Define typed domain/storage errors and privacy-safe error details in apps/local-agent/src/resume_agent/profile/errors.py, apps/local-agent/src/resume_agent/storage/errors.py, and apps/local-agent/src/resume_agent/privacy/redaction.py.
-- [ ] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
-- [ ] T010 [P] Define application configuration, user-data paths, and loopback service defaults in apps/local-agent/src/resume_agent/config.py.
-- [ ] T011 Create the local API application shell and request-size/error middleware in apps/local-agent/src/resume_agent/api/app.py.
+- [x] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
+- [x] T010 [P] Define application configuration, user-data paths, and loopback service defaults in apps/local-agent/src/resume_agent/config.py.
+- [x] T011 Create the local API application shell and request-size/error middleware in apps/local-agent/src/resume_agent/api/app.py.
 - [ ] T012 [P] Add shared synthetic profile builders and fake keyring/temp-directory fixtures in apps/local-agent/tests/conftest.py.
 
 **Checkpoint**: The contract amendment, project setup, domain seams, and safety test fixtures are ready.
