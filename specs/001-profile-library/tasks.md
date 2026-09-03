@@ -35,7 +35,7 @@ description: "Task list for F001 local profile library"
 - [x] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
 - [x] T010 [P] Define application configuration, user-data paths, and loopback service defaults in apps/local-agent/src/resume_agent/config.py.
 - [x] T011 Create the local API application shell and request-size/error middleware in apps/local-agent/src/resume_agent/api/app.py.
-- [ ] T012 [P] Add shared synthetic profile builders and fake keyring/temp-directory fixtures in apps/local-agent/tests/conftest.py.
+- [x] T012 [P] Add shared synthetic profile builders and fake keyring/temp-directory fixtures in apps/local-agent/tests/conftest.py.
 
 **Checkpoint**: The contract amendment, project setup, domain seams, and safety test fixtures are ready.
 
