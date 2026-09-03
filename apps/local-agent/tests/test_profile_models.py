@@ -96,3 +96,18 @@ def test_definition_subclasses_reject_conflicting_custom_flag() -> None:
 
 
 
+
+def test_standard_definition_rejects_true_custom_flag() -> None:
+    from resume_agent.profile.models import StandardFieldDefinition
+    with pytest.raises(ValueError):
+        StandardFieldDefinition(id="std", label="Std", field_type=FieldType.TEXT,
+                                default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
+                                is_custom=True, allowed_scopes=[Scope.GLOBAL], created_at=TS, updated_at=TS)
+
+
+def test_custom_definition_rejects_false_custom_flag() -> None:
+    from resume_agent.profile.models import CustomFieldDefinition
+    with pytest.raises(ValueError):
+        CustomFieldDefinition(id="custom", label="Custom", field_type=FieldType.TEXT,
+                              default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
+                              is_custom=False, allowed_scopes=[Scope.GLOBAL], created_at=TS, updated_at=TS)
