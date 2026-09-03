@@ -31,7 +31,7 @@ def test_config_is_immutable_and_root_is_absolute(tmp_path: Path) -> None:
         AppConfig(Path("relative-root"))
 
 
-@pytest.mark.parametrize("host", ["0.0.0.0", "localhost", "192.168.1.2"])
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.2"])
 def test_only_loopback_host_is_allowed(tmp_path: Path, host: str) -> None:
     with pytest.raises(ValueError, match="loopback"):
         AppConfig(tmp_path.absolute(), host=host)

@@ -18,6 +18,8 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 DEFAULT_REQUEST_LIMIT = 1_048_576
 MAX_REQUEST_LIMIT = 16 * 1024 * 1024
+DEFAULT_APP_NAME = "resume-agent"
+DEFAULT_NAMESPACE = "resume_agent"
 
 
 def _normalize_root(value: str | Path) -> Path:
@@ -28,7 +30,9 @@ def _normalize_root(value: str | Path) -> Path:
 
 
 def _validate_host(value: str) -> str:
-    host = str(value).strip()
+    host = str(value).strip().lower()
+    if host == "localhost":
+        host = DEFAULT_HOST
     if not host:
         raise ValueError("host must be a loopback IP address")
     try:
@@ -63,6 +67,8 @@ class AppConfig:
     host: str = DEFAULT_HOST
     port: int = DEFAULT_PORT
     request_limit: int = DEFAULT_REQUEST_LIMIT
+    app_name: str = DEFAULT_APP_NAME
+    namespace: str = DEFAULT_NAMESPACE
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data_root", _normalize_root(self.data_root))
@@ -75,10 +81,19 @@ class AppConfig:
             or not 1 <= self.request_limit <= MAX_REQUEST_LIMIT
         ):
             raise ValueError("request_limit is outside the safe bound")
+        for field_name in ("app_name", "namespace"):
+            value = str(getattr(self, field_name)).strip()
+            if not value:
+                raise ValueError(f"{field_name} must not be empty")
+            object.__setattr__(self, field_name, value)
 
     @property
     def root(self) -> Path:
         return self.data_root
+
+    @property
+    def name(self) -> str:
+        return self.app_name
 
     @property
     def request_limit_bytes(self) -> int:
@@ -92,17 +107,24 @@ class AppConfig:
 
     @property
     def safe_display(self) -> str:
-        return f"AppConfig(host={self.host!r}, port={self.port}, request_limit={self.request_limit})"
+        return (
+            f"AppConfig(name={self.app_name!r}, namespace={self.namespace!r}, "
+            f"host={self.host!r}, port={self.port}, request_limit={self.request_limit})"
+        )
 
-    def to_dict(self) -> dict[str, Any]:
-        """Return internal settings; callers must redact data_root before logging."""
+    def to_dict(self, *, include_data_root: bool = False) -> dict[str, Any]:
+        """Return stable safe settings; include the absolute path only explicitly."""
 
-        return {
-            "data_root": str(self.data_root),
+        result: dict[str, Any] = {
+            "app_name": self.app_name,
+            "namespace": self.namespace,
             "host": self.host,
             "port": self.port,
             "request_limit": self.request_limit,
         }
+        if include_data_root:
+            result["data_root"] = str(self.data_root)
+        return result
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any] | None = None, **overrides: Any) -> AppConfig:
@@ -112,6 +134,8 @@ class AppConfig:
             data["data_root"] = data.pop("root")
         if "request_limit_bytes" in data and "request_limit" not in data:
             data["request_limit"] = data.pop("request_limit_bytes")
+        if "name" in data and "app_name" not in data:
+            data["app_name"] = data.pop("name")
         return cls(**data)
 
     def contains(self, path: str | Path) -> bool:
