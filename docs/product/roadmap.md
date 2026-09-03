@@ -1,7 +1,7 @@
 # 智能简历填写助手 Roadmap
 
 - 更新日期：2026-09-03
-- 状态：M0 基础设施已完成，F001 处于 Specifying（SDD 产物已完成，准备进入实现）
+- 状态：M0 基础设施已完成，F001 处于 Reviewing（US1 实现与自动化检查已完成，待提交 PR 审阅）
 - 产品基线：`docs/product/product-brief-v1.md`
 - 开发规范：`AGENTS.md`、`.specify/memory/constitution.md`
 
@@ -33,7 +33,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 | Git/GitHub 初始化 | Done | 已创建公开仓库并推送 `main`：`lxy-2001/resume-form-assistant` |
 | 最小代码骨架 | Done | 已建立扩展、本地服务、共享契约和测试目录 |
 | 共享接口 v0.1 基线 | Done | PR #1 已完成审阅并合并到 `main`；生命周期 Schema、示例和测试已冻结 |
-| 第一个 Feature | Specifying | F001 本地资料库，SDD 产物已完成，生命周期契约已合并，准备进入实现 |
+| 第一个 Feature | Reviewing | F001 本地资料库，US1 实现与自动化检查已完成，待提交 PR 审阅 |
 
 ## 里程碑与 Feature
 
@@ -56,7 +56,7 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 | Feature | 状态 | 依赖 | 交付物 |
 | --- | --- | --- | --- |
-| F001 本地资料库：手动录入与编辑 | Specifying | F000A、共享接口 v0.1 | spec、plan、tasks 和分析已完成；生命周期契约已合并，准备实现 |
+| F001 本地资料库：手动录入与编辑 | Reviewing | F000A、共享接口 v0.1 | US1 资料服务、加密存储、API、Options 页面和隐私检查已完成；119 项本地服务测试与 4 项扩展测试通过，待 PR 审阅 |
 | F002 文档解析：PDF/Word/OCR | Planned | F001 | 原文提取、OCR、结构化导入、来源、置信度和待确认结果 |
 | F003 资料标准化与人工纠正 | Planned | F002 | Agent 归类、规则校验、合并和纠正流程 |
 
@@ -122,12 +122,11 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 ## 当前重点与下一步
 
-当前阶段是 **M1，F001 已完成规格设计，准备进入实现**。按顺序推进：
-
+当前阶段是 **M1，F001 已完成实现，进入 PR 审阅**。按顺序推进：
 1. 已创建 `feat/F001-profile-library` 分支；
 2. 已完成 F001 的 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
-3. 共享生命周期契约 PR #1 已合并；接下来按 tasks 通过测试驱动实现 F001，并在完成后创建 Pull Request；
-4. 合并后更新本 Roadmap，再开始 F002。
+3. 共享生命周期契约 PR #1 已合并；F001 已按 Phase 完成测试驱动实现与检查，下一步创建 Pull Request；
+4. PR 审阅并合并后更新本 Roadmap，再开始 F002。
 
 ## 变更规则
 

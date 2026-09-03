@@ -47,22 +47,22 @@ description: "Task list for F001 local profile library"
 
 ### Tests for User Story 1 (write first and observe failure)
 
-- [ ] T013 [P] [US1] Add domain tests for create, read, edit, cancel semantics, empty state, and stable timestamps in apps/local-agent/tests/unit/test_profile_service.py.
-- [ ] T014 [P] [US1] Add field-type and format validation tests for text, email, date, number, boolean, enum, and multi-value inputs in apps/local-agent/tests/unit/test_profile_validation.py.
-- [ ] T015 [P] [US1] Add encrypted-store tests for initialization, round-trip encryption, wrong/untrusted key backends, tamper detection, failed-write preservation, and absence of synthetic plaintext in the main/temp/backup files in apps/local-agent/tests/unit/test_encrypted_json.py.
-- [ ] T016 [P] [US1] Add local API contract tests for profile.read and profile.upsert success, confirmation, stale version, and structured errors in apps/local-agent/tests/contract/test_profile_routes.py.
-- [ ] T017 [P] [US1] Add Options Page tests for loading, editing, validation messages, and cancelling unsaved changes in apps/extension/tests/options/profile-page.test.tsx.
+- [x] T013 [P] [US1] Add domain tests for create, read, edit, cancel semantics, empty state, and stable timestamps in apps/local-agent/tests/unit/test_profile_service.py.
+- [x] T014 [P] [US1] Add field-type and format validation tests for text, email, date, number, boolean, enum, and multi-value inputs in apps/local-agent/tests/unit/test_profile_validation.py.
+- [x] T015 [P] [US1] Add encrypted-store tests for initialization, round-trip encryption, wrong/untrusted key backends, tamper detection, failed-write preservation, and absence of synthetic plaintext in the main/temp/backup files in apps/local-agent/tests/unit/test_encrypted_json.py.
+- [x] T016 [P] [US1] Add local API contract tests for profile.read and profile.upsert success, confirmation, stale version, and structured errors in apps/local-agent/tests/contract/test_profile_routes.py.
+- [x] T017 [P] [US1] Add Options Page tests for loading, editing, validation messages, and cancelling unsaved changes in apps/extension/tests/options/profile-page.test.tsx.
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement deterministic field validation, standard-field catalog loading, and confirmation policy in apps/local-agent/src/resume_agent/profile/validation.py, apps/local-agent/src/resume_agent/profile/standard_fields.py, and apps/local-agent/src/resume_agent/profile/policy.py.
-- [ ] T019 [US1] Implement the profile service for confirmed upsert, read, empty state, version checks, and non-mutating cancellation in apps/local-agent/src/resume_agent/profile/service.py.
-- [ ] T020 [US1] Implement allowlisted OS-keyring key provisioning and fail-closed behavior for unavailable, null, or untrusted backends in apps/local-agent/src/resume_agent/storage/key_provider.py.
-- [ ] T021 [US1] Implement versioned AES-GCM envelope encoding, decoding, and authenticated-data checks in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
-- [ ] T022 [US1] Implement atomic temp-file flush, fsync, replace, single-writer locking, and last-valid-snapshot preservation, including injected fsync/replace failure handling, in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
-- [ ] T023 [US1] Implement profile.read and profile.upsert routes with shared-envelope validation and redacted errors in apps/local-agent/src/resume_agent/api/profile_routes.py.
-- [ ] T024 [US1] Implement the Options Page profile client, basic profile form, field editor, empty state, and accessible error display in apps/extension/src/options/profileClient.ts, apps/extension/src/options/ProfilePage.tsx, and apps/extension/src/options/main.tsx.
-- [ ] T025 [US1] Add privacy-safe operation logging and ensure no profile values or keys are emitted in apps/local-agent/src/resume_agent/privacy/redaction.py and apps/local-agent/src/resume_agent/api/app.py.
+- [x] T018 [US1] Implement deterministic field validation, standard-field catalog loading, and confirmation policy in apps/local-agent/src/resume_agent/profile/validation.py, apps/local-agent/src/resume_agent/profile/standard_fields.py, and apps/local-agent/src/resume_agent/profile/policy.py.
+- [x] T019 [US1] Implement the profile service for confirmed upsert, read, empty state, version checks, and non-mutating cancellation in apps/local-agent/src/resume_agent/profile/service.py.
+- [x] T020 [US1] Implement allowlisted OS-keyring key provisioning and fail-closed behavior for unavailable, null, or untrusted backends in apps/local-agent/src/resume_agent/storage/key_provider.py.
+- [x] T021 [US1] Implement versioned AES-GCM envelope encoding, decoding, and authenticated-data checks in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
+- [x] T022 [US1] Implement atomic temp-file flush, fsync, replace, single-writer locking, and last-valid-snapshot preservation, including injected fsync/replace failure handling, in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
+- [x] T023 [US1] Implement profile.read and profile.upsert routes with shared-envelope validation and redacted errors in apps/local-agent/src/resume_agent/api/profile_routes.py.
+- [x] T024 [US1] Implement the Options Page profile client, basic profile form, field editor, empty state, and accessible error display in apps/extension/src/options/profileClient.ts, apps/extension/src/options/ProfilePage.tsx, and apps/extension/src/options/main.tsx.
+- [x] T025 [US1] Add privacy-safe operation logging and ensure no profile values or keys are emitted in apps/local-agent/src/resume_agent/privacy/redaction.py and apps/local-agent/src/resume_agent/api/app.py.
 
 **Checkpoint**: US1 is independently usable and all US1 tests pass; commit the MVP before starting US2.
 

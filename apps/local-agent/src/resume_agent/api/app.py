@@ -7,6 +7,7 @@ size limit, a health endpoint, and contract-shaped redacted errors.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
@@ -16,13 +17,14 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from resume_agent.config import AppConfig
-from resume_agent.privacy.redaction import redact_details, redact_text
+from resume_agent.privacy.redaction import redact_details, redact_text, safe_operation_log
 from resume_agent.profile.errors import LifecycleError
 from resume_agent.storage.errors import StorageError
 
 SCHEMA_VERSION = "0.1"
 _DEFAULT_DATA_DIR_NAME = ".resume-agent"
 _SAFE_CLIENTS = frozenset({"127.0.0.1", "::1", "localhost"})
+_LOGGER = logging.getLogger(__name__)
 
 
 def _id_from_header(request: Request, name: str, fallback: str) -> str:
@@ -69,6 +71,16 @@ def _typed_error_response(request: Request, exc: LifecycleError, status_code: in
         retryable=isinstance(exc, StorageError),
         details=exc.details,
         failed_operation=failed_operation,
+    )
+    _LOGGER.info(
+        "lifecycle operation failed",
+        extra=safe_operation_log(
+            failed_operation or "unknown",
+            status="failed",
+            request_id=payload["request_id"],
+            task_id=payload["task_id"],
+            error_code=exc.code,
+        ),
     )
     return JSONResponse(payload, status_code=status_code)
 
@@ -167,6 +179,7 @@ def create_app(
     *,
     allowed_origins: Iterable[str] | None = None,
     require_loopback: bool = True,
+    profile_service: Any | None = None,
 ) -> FastAPI:
     """Build the local API app without starting a server or performing I/O."""
 
@@ -208,6 +221,10 @@ def create_app(
             ),
             status_code=500,
         )
+
+    if profile_service is not None:
+        from resume_agent.api.profile_routes import register_profile_routes
+        register_profile_routes(app, profile_service)
 
     return app
 

@@ -6,9 +6,8 @@ the observable snapshot/version/confirmation semantics before storage or HTTP co
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Iterator
 
 import pytest
 
@@ -28,7 +27,6 @@ from resume_agent.profile.models import (
 )
 from resume_agent.profile.service import ProfileService
 from resume_agent.storage.base import ProfileStore
-
 
 PROFILE_ID = "profile-synthetic-f001-001"
 
@@ -83,7 +81,7 @@ def test_empty_read_returns_distinct_empty_snapshot_without_write(fake_profile_s
     assert snapshot.is_empty is True
     assert snapshot.fields == []
     assert snapshot.records == []
-    assert getattr(fake_profile_store, "write_calls") == 0
+    assert fake_profile_store.write_calls == 0
 
 
 def test_create_persist_restart_and_read_back(
@@ -160,7 +158,7 @@ def test_invalid_input_does_not_replace_last_valid_snapshot(
         )
 
     assert service.read(PROFILE_ID).to_dict() == saved.to_dict()
-    assert getattr(fake_profile_store, "write_calls") == 1
+    assert fake_profile_store.write_calls == 1
 
 
 def test_cancel_is_non_mutating_and_returns_current_snapshot(
@@ -174,12 +172,12 @@ def test_cancel_is_non_mutating_and_returns_current_snapshot(
         fields=[_field("person.full_name", "Saved", timestamp)],
         user_confirmed=True,
     )
-    writes_before = getattr(fake_profile_store, "write_calls")
+    writes_before = fake_profile_store.write_calls
 
     cancelled = service.cancel(PROFILE_ID)
 
     assert cancelled.to_dict() == saved.to_dict()
-    assert getattr(fake_profile_store, "write_calls") == writes_before
+    assert fake_profile_store.write_calls == writes_before
 
 
 def test_stale_version_is_rejected_without_write(fake_profile_store: ProfileStore) -> None:
@@ -191,7 +189,7 @@ def test_stale_version_is_rejected_without_write(fake_profile_store: ProfileStor
         fields=[_field("person.full_name", "Saved", timestamp)],
         user_confirmed=True,
     )
-    writes_before = getattr(fake_profile_store, "write_calls")
+    writes_before = fake_profile_store.write_calls
 
     with pytest.raises(StaleProfileVersionError):
         service.upsert(
@@ -201,7 +199,7 @@ def test_stale_version_is_rejected_without_write(fake_profile_store: ProfileStor
             user_confirmed=True,
         )
 
-    assert getattr(fake_profile_store, "write_calls") == writes_before
+    assert fake_profile_store.write_calls == writes_before
 
 
 def test_unconfirmed_mutation_is_rejected_without_write(fake_profile_store: ProfileStore) -> None:
@@ -216,5 +214,5 @@ def test_unconfirmed_mutation_is_rejected_without_write(fake_profile_store: Prof
             user_confirmed=False,
         )
 
-    assert getattr(fake_profile_store, "write_calls") == 0
+    assert fake_profile_store.write_calls == 0
 

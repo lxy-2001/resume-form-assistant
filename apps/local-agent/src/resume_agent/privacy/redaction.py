@@ -41,4 +41,38 @@ def redact_details(value: Any) -> Any:
         return redact_text(value)
     if value is None or isinstance(value, (bool, int, float)):
         return value
+
+
     raise TypeError(f"details contain non-JSON value: {type(value).__name__}")
+_SAFE_OPERATION_KEYS = frozenset(
+    {
+        "operation",
+        "status",
+        "request_id",
+        "task_id",
+        "profile_id",
+        "profile_version",
+        "field_count",
+        "error_code",
+    }
+)
+
+
+def safe_operation_log(operation: str, **details: Any) -> dict[str, Any]:
+    """Build metadata-only log fields; profile values and credentials are dropped."""
+
+    if not isinstance(operation, str) or not operation.strip():
+        raise ValueError("operation must be a non-empty string")
+    payload: dict[str, Any] = {"operation": operation.strip()}
+    for key, value in details.items():
+        if key not in _SAFE_OPERATION_KEYS or key == "operation":
+            continue
+        if key in {"profile_version", "field_count"}:
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                continue
+            payload[key] = value
+        elif isinstance(value, str):
+            payload[key] = redact_text(value)
+        elif value is not None:
+            payload[key] = redact_details(value)
+    return payload
