@@ -118,7 +118,7 @@ class FieldDefinition(Model):
         return self
 
 
-class StandardFieldDefinition(FieldDefinition)
+class StandardFieldDefinition(FieldDefinition):
     is_custom: Literal[False] = False
 
 
@@ -204,6 +204,7 @@ class ProfileSnapshot(Model):
         elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
         return self
+
 
 
 
