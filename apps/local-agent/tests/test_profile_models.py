@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,8 +13,7 @@ from resume_agent.profile.models import (
     Source,
 )
 
-
-TS = datetime(2099, 1, 1, tzinfo=timezone.utc)
+TS = datetime(2099, 1, 1, tzinfo=UTC)
 
 
 def _field(**overrides: object) -> FieldValue:

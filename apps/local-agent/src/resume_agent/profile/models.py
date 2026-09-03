@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, TypeVar
+from typing import Any, Self
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class FieldType(StrEnum):
@@ -53,23 +53,19 @@ class SourceKind(StrEnum):
 
 
 class Model(BaseModel):
-    class Config:
-        extra = "forbid"
-        allow_population_by_field_name = True
-    _json_type: ClassVar[type[Model]]
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     def to_dict(self) -> dict[str, Any]:
-        return json.loads(self.json(exclude_none=True))
+        return json.loads(self.model_dump_json(exclude_none=True))
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
     @classmethod
-    def from_json(cls: type[ModelT], payload: str | bytes) -> ModelT:
-        return cls.parse_raw(payload)
+    def from_json(cls, payload: str | bytes) -> Self:
+        return cls.model_validate_json(payload)
 
 
-ModelT = TypeVar("ModelT", bound=Model)
 
 
 class Source(Model):
@@ -111,15 +107,15 @@ class FieldDefinition(Model):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    @root_validator
-    def validate_definition(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if values.get("default_sensitivity") != Sensitivity.NORMAL and not values.get("requires_confirmation"):
+    @model_validator(mode="after")
+    def validate_definition(self) -> FieldDefinition:
+        if self.default_sensitivity != Sensitivity.NORMAL and not self.requires_confirmation:
             raise ValueError("sensitive definitions require confirmation")
-        if values.get("is_custom") and (values.get("created_at") is None or values.get("updated_at") is None):
+        if self.is_custom and (self.created_at is None or self.updated_at is None):
             raise ValueError("custom definitions require creation and update timestamps")
-        if values.get("field_type") == FieldType.ENUM and not values.get("options"):
+        if self.field_type == FieldType.ENUM and not self.options:
             raise ValueError("enum definitions require options")
-        return values
+        return self
 
 
 class StandardFieldDefinition(FieldDefinition):
@@ -143,17 +139,17 @@ class FieldValue(Model):
     source: Source
     updated_at: datetime
 
-    @root_validator
-    def validate_value(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if values.get("sensitivity") != Sensitivity.NORMAL and not values.get("requires_confirmation"):
+    @model_validator(mode="after")
+    def validate_value(self) -> FieldValue:
+        if self.sensitivity != Sensitivity.NORMAL and not self.requires_confirmation:
             raise ValueError("sensitive values require confirmation")
-        if not values.get("confirmed"):
+        if not self.confirmed:
             raise ValueError("persisted field values must be confirmed")
-        if values.get("scope") is Scope.GLOBAL and values.get("scope_context") is not None:
+        if self.scope is Scope.GLOBAL and self.scope_context is not None:
             raise ValueError("global values cannot have scope_context")
-        if values.get("scope") is not Scope.GLOBAL and not values.get("scope_context"):
+        if self.scope is not Scope.GLOBAL and not self.scope_context:
             raise ValueError("website/application values require scope_context")
-        return values
+        return self
 
 
 class RepeatableRecord(Model):
@@ -165,13 +161,13 @@ class RepeatableRecord(Model):
     created_at: datetime
     updated_at: datetime
 
-    @root_validator
-    def validate_record(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if values.get("confirmed") and not values.get("fields"):
+    @model_validator(mode="after")
+    def validate_record(self) -> RepeatableRecord:
+        if self.confirmed and not self.fields:
             raise ValueError("confirmed records require at least one field")
-        if values.get("confirmed") is False:
+        if self.confirmed is False:
             raise ValueError("persisted records must be confirmed")
-        return values
+        return self
 
 
 class ProfileSnapshot(Model):
@@ -184,14 +180,14 @@ class ProfileSnapshot(Model):
     created_at: datetime
     updated_at: datetime
 
-    @root_validator
-    def validate_empty_state(cls, values: dict[str, Any]) -> dict[str, Any]:
-        actual_empty = not values.get("fields") and not values.get("records")
-        if values.get("is_empty") is None:
-            values["is_empty"] = actual_empty
-        elif values.get("is_empty") != actual_empty:
+    @model_validator(mode="after")
+    def validate_empty_state(self) -> ProfileSnapshot:
+        actual_empty = not self.fields and not self.records
+        if self.is_empty is None:
+            object.__setattr__(self, "is_empty", actual_empty)
+        elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
-        return values
+        return self
 
 
 
@@ -202,6 +198,8 @@ class ProfileSnapshot(Model):
 
 
 
-setattr(Model, 'model_validate', classmethod(lambda cls, obj: cls.parse_obj(obj)))
+
+
+
 
 
