@@ -18,10 +18,10 @@ description: "Task list for F001 local profile library"
 **Purpose**: Establish runnable local-service and Options Page project surfaces without personal data.
 
 - [x] T001 Verified that shared-contracts PR #1 includes the lifecycle amendment, is merged into `main` at `23b9d2b`, updated the F001 branch, and recorded the merge reference in specs/001-profile-library/contracts/profile-lifecycle.md.
-- [ ] T002 [P] Create the Python project manifest and development commands in apps/local-agent/pyproject.toml.
-- [ ] T003 [P] Create the Options Page package manifest, TypeScript/Vite configuration, entry document, and development commands in apps/extension/package.json, apps/extension/tsconfig.json, apps/extension/vite.config.ts, and apps/extension/index.html.
-- [ ] T004 [P] Add synthetic F001 fixtures and fixture-handling rules in tests/fixtures/f001/README.md and apps/local-agent/tests/fixtures/f001_profiles.py.
-- [ ] T005 [P] Add local-service and Options Page test configuration in apps/local-agent/tests/conftest.py and apps/extension/vitest.config.ts.
+- [x] T002 [P] Create the Python project manifest and development commands in apps/local-agent/pyproject.toml.
+- [x] T003 [P] Create the Options Page package manifest, TypeScript/Vite configuration, entry document, and development commands in apps/extension/package.json, apps/extension/tsconfig.json, apps/extension/vite.config.ts, and apps/extension/index.html.
+- [x] T004 [P] Add synthetic F001 fixtures and fixture-handling rules in tests/fixtures/f001/README.md and apps/local-agent/tests/fixtures/f001_profiles.py.
+- [x] T005 [P] Add local-service and Options Page test configuration in apps/local-agent/tests/conftest.py and apps/extension/vitest.config.ts.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -30,8 +30,8 @@ description: "Task list for F001 local profile library"
 **CRITICAL**: No user-story implementation is complete until this phase and its contract checkpoint pass.
 
 - [x] T006 Verified the merged lifecycle schema, examples, operation table, and contract tests for `profile.read`, `profile.delete`, and `profile.export` in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/; 55 contract tests pass.
-- [ ] T007 [P] Define Profile, field definitions, field values, repeatable records, scopes, and serialization boundaries in apps/local-agent/src/resume_agent/profile/models.py.
-- [ ] T008 [P] Define typed domain/storage errors and privacy-safe error details in apps/local-agent/src/resume_agent/profile/errors.py, apps/local-agent/src/resume_agent/storage/errors.py, and apps/local-agent/src/resume_agent/privacy/redaction.py.
+- [x] T007 [P] Define Profile, field definitions, field values, repeatable records, scopes, and serialization boundaries in apps/local-agent/src/resume_agent/profile/models.py.
+- [x] T008 [P] Define typed domain/storage errors and privacy-safe error details in apps/local-agent/src/resume_agent/profile/errors.py, apps/local-agent/src/resume_agent/storage/errors.py, and apps/local-agent/src/resume_agent/privacy/redaction.py.
 - [ ] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
 - [ ] T010 [P] Define application configuration, user-data paths, and loopback service defaults in apps/local-agent/src/resume_agent/config.py.
 - [ ] T011 Create the local API application shell and request-size/error middleware in apps/local-agent/src/resume_agent/api/app.py.
