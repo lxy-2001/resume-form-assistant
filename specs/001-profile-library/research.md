@@ -1,6 +1,6 @@
 # F001 Research: 本地资料存储与边界
 
-**Date**: 2026-09-02
+**Date**: 2026-09-03
 **Scope**: F001 本地资料库的存储、隐私、接口边界和测试策略。
 
 ## Decision 1: 使用加密 JSON 文件作为首版资料存储
@@ -53,9 +53,9 @@
 
 ## Decision 5: 共享契约优先，补齐资料生命周期操作
 
-**Decision**: 扩展和本地服务继续以 packages/contracts/v0.1 为唯一消息来源。当前 PR #1 已覆盖 profile.upsert 和字段删除，但没有完整的 profile.read、profile.export、profile.delete 响应语义；F001 实现前必须在上游契约中补齐这些操作，或记录等价的统一操作。F001 不复制主 Schema，也不私下定义另一套字段含义。
+**Decision**: 扩展和本地服务继续以 `packages/contracts/v0.1` 为唯一消息来源。PR #1 已将 `profile.read`、`profile.export`、`profile.delete` 的请求/响应、版本、确认、选择和错误语义合并到 `main`（merge commit `23b9d2b`）。F001 不复制主 Schema，也不私下定义另一套字段含义。
 
-**Rationale**: Options Page 需要读取和管理资料；如果没有共享响应契约，扩展和本地服务很容易产生不一致的字段解释。把缺口显式作为前置检查点比静默绕过更安全。
+**Rationale**: Options Page 需要读取和管理资料；把生命周期消息集中在共享 Schema 中，可以让扩展和本地服务对版本、确认、选择和错误保持一致，并在运行时代码开始前完成可验证的边界冻结。
 
 ## Decision 6: 以本地 API 和页面做最小可用闭环
 

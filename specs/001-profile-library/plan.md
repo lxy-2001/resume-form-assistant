@@ -1,6 +1,6 @@
 # Implementation Plan: 本地简历资料库
 
-**Branch**: feat/F001-profile-library | **Date**: 2026-09-02 | **Spec**: spec.md
+**Branch**: feat/F001-profile-library | **Date**: 2026-09-03 | **Spec**: spec.md
 
 **Input**: Feature specification from specs/001-profile-library/spec.md
 
@@ -26,7 +26,7 @@
 
 **Performance Goals**: 在不超过 500 个字段值和 100 条重复记录时，资料读取和单次保存的用户可感知等待时间 p95 不超过 1 秒。
 
-**Constraints**: 单用户、本地运行；F001 的资料操作不产生个人资料出站请求；所有写入和删除都经过确认与校验；不能自动提交申请、导航网页或调用模型；共享契约 PR #1 合并后才能进入跨模块运行时实现。
+**Constraints**: 单用户、本地运行；F001 的资料操作不产生个人资料出站请求；所有写入和删除都经过确认与校验；不能自动提交申请、导航网页或调用模型；共享契约 PR #1 已合并，F001 可以进入跨模块运行时实现。
 
 **Scale/Scope**: 一台设备、一套主资料、最多 500 个字段值和 100 条重复记录；不做账户、云同步、多人协作或并发多用户服务。
 
@@ -39,7 +39,7 @@
 | I. User-Controlled Safety and Reversibility | F001 不执行网页动作；敏感字段、自定义字段和删除有确认；失败不覆盖有效资料 | PASS |
 | II. Deterministic-First, Bounded Agent | 只实现本地规则和结构化资料服务；不调用 Agent，不执行任意代码 | PASS |
 | III. Local-First Privacy and Least Privilege | 加密静态存储、OS 凭据托管、零远程资料发送、日志脱敏 | PASS |
-| IV. Contract- and Test-First | 复用 packages/contracts；先写验收测试；契约缺口在实现前显式解决 | PASS |
+| IV. Contract- and Test-First | 复用 packages/contracts；先写验收测试；共享生命周期契约已在实现前完成并验证 | PASS |
 | V. Incremental and Traceable Feature Delivery | 独立 F001 分支，拥有完整 SDD 产物，节点提交并通过 PR | PASS |
 
 No constitution violations require a complexity exception.
@@ -49,7 +49,7 @@ No constitution violations require a complexity exception.
 1. 资料库页面作为用户入口，Options Page 只负责展示表单、收集用户决定和显示结果；资料值由本地服务保存，页面不建立第二份长期资料副本。
 2. 领域层提供 ProfileStore、FieldValidator、ConfirmationPolicy 和 ExportService 等窄接口；API、页面和存储实现通过接口组合，避免把 UI 或 HTTP 细节写进资料模型。
 3. 首版使用加密 JSON 文件而不是 SQLCipher 或字段可查询数据库。当前数据量小、整文档加密可减少字段名和元数据泄露，且安装和测试成本低；当出现多份资料、复杂查询、导入历史或高并发需求时再评估加密数据库迁移。
-4. 上游契约 PR #1 当前已有 profile.upsert 和删除字段语义，但缺少资料读取及显式导出结果的跨模块响应。F001 实现前必须在该契约基线中补齐 profile.read、profile.export 和 profile.delete（或记录等价的统一操作）；不得在扩展和本地服务之间另造未登记的消息格式。此项作为实施前检查点，不把契约副本提交到 F001。
+4. 上游契约 PR #1 已将 `profile.read`、`profile.delete` 和 `profile.export` 及其版本、确认、选择和错误语义合并到 `main`（merge commit `23b9d2b`）。F001 必须直接复用该契约，不得在扩展和本地服务之间另造未登记的消息格式，也不把契约副本提交到 F001。
 5. F001 先支持 loopback HTTP/JSON 的本地开发通道；通道认证、端口和打包细节必须遵守 F004 的最终通信选择。资料领域接口不能依赖某一种传输方式。F004 不得改变 F001 已确定的确认、加密、日志和零远程资料边界。
 
 ## Plan of Work
@@ -57,14 +57,14 @@ No constitution violations require a complexity exception.
 ### Phase 0: Research and resolution
 
 - 固定加密 JSON、OS keyring、原子写入和损坏恢复方案；
-- 核对共享契约的 ProfileField、Scope、确认和错误语义，列出需要在 PR #1 补齐的读取/导出/删除消息；
+- 核对并记录已合并共享契约的 ProfileField、Scope、确认、版本和错误语义；
 - 确认 Options Page 与本地资料服务的职责边界、零远程调用测试方式和脱敏日志规则；
 - 将结论写入 research.md，所有技术上下文中的未决项在进入设计前关闭。
 
 ### Phase 1: Design and contracts
 
 - 在 data-model.md 固定 Profile、字段定义、字段值、重复记录、范围和导出请求的关系与不变量；
-- 在 contracts/profile-lifecycle.md 记录 F001 对共享消息的映射、契约缺口和错误语义；完整 JSON Schema 仍只维护在 packages/contracts；
+- 在 contracts/profile-lifecycle.md 记录 F001 对共享消息的映射、已完成的合并检查点和错误语义；完整 JSON Schema 仍只维护在 packages/contracts；
 - 在 quickstart.md 提供无需云端和真实个人资料即可运行的验收路径；
 - 复核 Constitution Check，确认加密、确认、日志和跨模块边界没有例外。
 

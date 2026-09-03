@@ -1,6 +1,6 @@
 # F001 Data Model: 本地简历资料库
 
-**Date**: 2026-09-02
+**Date**: 2026-09-03
 **Source**: specs/001-profile-library/spec.md and packages/contracts/v0.1
 
 ## Modeling Principles
@@ -42,7 +42,7 @@
 | label | 非空、用户可读；与标准字段名称冲突时拒绝 |
 | field_type | text/date/number/boolean/enum/multi_value |
 | options | enum 或 multi_value 时非空且唯一 |
-| scope | global/site/application |
+| scope | global/website/application |
 | sensitivity | normal/sensitive/highly_sensitive |
 | validation | 可选的长度、格式、范围限制 |
 | created_at / updated_at | 时间戳 |
@@ -57,8 +57,8 @@
 | --- | --- |
 | field_id | 指向标准或自定义字段定义 |
 | value | 必须符合 field_type 和 validation |
-| scope | global、site 或 application |
-| scope_context | global 时为空；site/application 时必填 | 网站或本次申请上下文的不透明标识，不保存为模型可执行指令 |
+| scope | global、website 或 application |
+| scope_context | global 时为空；website/application 时必填 | 网站或本次申请上下文的不透明标识，不保存为模型可执行指令 |
 | source | F001 为 manual；后续导入可扩展 |
 | confirmed | F001 写入后为 true |
 | sensitivity | 继承定义或显式提升，不得降低高风险级别 |
@@ -81,17 +81,17 @@
 
 记录可以为空草稿，但取消编辑后不得保存空记录；删除记录不影响其他记录。
 
-### ExportRequest
+### ExportRequest（领域操作）
 
-一次用户主动发起的导出操作。
+一次用户主动发起的导出操作。这里的领域对象不等同于线上的 `ProfileExportRequest`：请求字段以共享 Schema 为准，`export_id` 由服务在成功响应中生成。
 
 | 属性 | 约束 |
 | --- | --- |
-| export_id | 一次性标识 |
-| selected_scopes / selected_ids | 明确导出范围 |
+| profile_id / expected_profile_version | 资料身份和读取一致性版本 |
+| selected_scopes / selected_ids | 明确导出范围，对应请求的 `selection` |
 | user_confirmed | 导出前必须为 true |
 | destination | 用户选择的本地位置，不由服务上传 |
-| result | success/failed/cancelled |
+| result | 成功由响应的 `task_state=completed`、`status=written` 表示；失败使用 `ErrorResponse`；用户在请求发出前取消则不产生变更 |
 
 导出文件包含经过选择的资料数据和必要的版本信息，不包含密钥；导出完成后不自动删除或上传原资料。
 
@@ -135,10 +135,10 @@
 2. sensitive 或 highly_sensitive 值必须 requires_confirmation=true；未确认值不可提交。
 3. 日期、数字、枚举和多值遵循字段定义的类型与限制。
 4. null、空字符串和缺失值的语义必须由字段类型明确区分；空状态不得自动生成默认值。
-5. scope=site 时必须带 scope_context 网站范围；scope=application 时必须带 scope_context 本次申请上下文标识；global 不得带 scope_context。
+5. scope=website 时必须带 scope_context 网站范围；scope=application 时必须带 scope_context 本次申请上下文标识；global 不得带 scope_context。
 6. 每次持久化快照必须通过完整结构校验和认证标签校验。
 7. 资料、导出内容和密钥不能出现在普通日志。
 
 ## Mapping to Shared Contracts
 
-F001 使用共享契约中的 ProfileField、FieldType、Scope、Sensitivity、Source、ValidationRule 和确认字段。写入继续映射到 ProfileUpsertRequest/Response；读取、导出和完整删除的消息需先按 plan.md 中的检查点补入上游契约。领域对象不直接暴露加密 envelope。
+F001 使用共享契约中的 ProfileField、FieldType、Scope、Sensitivity、Source、ValidationRule 和确认字段。写入、读取、导出和删除分别映射到已合并的 `ProfileUpsertRequest/Response`、`ProfileReadRequest/Response`、`ProfileExportRequest/Response` 和 `ProfileDeleteRequest/Response`。领域对象不直接暴露加密 envelope。

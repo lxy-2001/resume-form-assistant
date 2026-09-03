@@ -17,7 +17,7 @@ description: "Task list for F001 local profile library"
 
 **Purpose**: Establish runnable local-service and Options Page project surfaces without personal data.
 
-- [ ] T001 Verify that the shared-contracts PR includes the lifecycle amendment and is merged into main, update the F001 branch, and record the merge reference in specs/001-profile-library/contracts/profile-lifecycle.md.
+- [x] T001 Verified that shared-contracts PR #1 includes the lifecycle amendment, is merged into `main` at `23b9d2b`, updated the F001 branch, and recorded the merge reference in specs/001-profile-library/contracts/profile-lifecycle.md.
 - [ ] T002 [P] Create the Python project manifest and development commands in apps/local-agent/pyproject.toml.
 - [ ] T003 [P] Create the Options Page package manifest, TypeScript/Vite configuration, entry document, and development commands in apps/extension/package.json, apps/extension/tsconfig.json, apps/extension/vite.config.ts, and apps/extension/index.html.
 - [ ] T004 [P] Add synthetic F001 fixtures and fixture-handling rules in tests/fixtures/f001/README.md and apps/local-agent/tests/fixtures/f001_profiles.py.
@@ -29,7 +29,7 @@ description: "Task list for F001 local profile library"
 
 **CRITICAL**: No user-story implementation is complete until this phase and its contract checkpoint pass.
 
-- [ ] T006 Verify the merged lifecycle schema, examples, operation table, and contract tests for profile.read, profile.delete, and profile.export in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/ before implementing F001 routes.
+- [x] T006 Verified the merged lifecycle schema, examples, operation table, and contract tests for `profile.read`, `profile.delete`, and `profile.export` in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/; 55 contract tests pass.
 - [ ] T007 [P] Define Profile, field definitions, field values, repeatable records, scopes, and serialization boundaries in apps/local-agent/src/resume_agent/profile/models.py.
 - [ ] T008 [P] Define typed domain/storage errors and privacy-safe error details in apps/local-agent/src/resume_agent/profile/errors.py, apps/local-agent/src/resume_agent/storage/errors.py, and apps/local-agent/src/resume_agent/privacy/redaction.py.
 - [ ] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
@@ -132,7 +132,7 @@ description: "Task list for F001 local profile library"
 ### Phase Dependencies
 
 - Phase 1 (Setup) has no feature dependency and can start immediately.
-- Phase 2 (Foundational) depends on Phase 1; T006 is blocked until the shared-contracts PR is available.
+- Phase 2 (Foundational) depends on Phase 1; T006 is complete because the shared-contracts PR is merged and verified.
 - Phase 3 (US1) depends on all Phase 2 tasks and is the MVP checkpoint.
 - Phase 4 (US2) depends on the domain and storage foundation plus the US1 profile snapshot semantics.
 - Phase 5 (US3) depends on the US1 snapshot and the lifecycle contract amendment; its storage-recovery tests may be prepared in parallel with US2.
@@ -189,6 +189,6 @@ validation internals may proceed in parallel once their interfaces exist.
 ## Notes
 
 - Every task uses the required checkbox, sequential ID, optional parallel marker, story label where applicable, and concrete file path format.
-- The lifecycle contract amendment is maintained on the shared-contracts PR (or a separate contracts PR), not duplicated under the F001 directory.
+- The lifecycle contract amendment was merged through shared-contracts PR #1 and remains maintained in packages/contracts; it is not duplicated under the F001 directory.
 - The key provider must fail closed for unavailable or untrusted backends; never add a plaintext fallback.
 - Real profiles, API keys, local data, and exported files remain outside Git.
