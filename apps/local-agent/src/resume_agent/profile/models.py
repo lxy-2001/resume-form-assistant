@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -77,7 +77,7 @@ class Source(Model):
 
 
 class ValidationRule(Model):
-    format: str | None = None
+    format: Literal["email", "phone", "date", "year", "url", "postal_code"] | None = None
     pattern: str | None = None
     min_length: int | None = Field(default=None, ge=0)
     max_length: int | None = Field(default=None, ge=0)
@@ -127,7 +127,15 @@ class CustomFieldDefinition(FieldDefinition):
 
 
 class FieldValue(Model):
-    field_id: str = Field(min_length=1, max_length=128)
+    @model_validator(mode="before")
+    @classmethod
+    def accept_field_id(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "id" not in data and "field_id" in data:
+            data = dict(data)
+            data["id"] = data.pop("field_id")
+        return data
+
+    id: str = Field(min_length=1, max_length=128)
     label: str = Field(min_length=1)
     field_type: FieldType
     value: Any
@@ -138,6 +146,14 @@ class FieldValue(Model):
     confirmed: bool
     source: Source
     updated_at: datetime
+    is_custom: bool = False
+    aliases: list[str] | None = None
+    options: list[PageOption] | None = None
+    validation: ValidationRule | None = None
+
+    @property
+    def field_id(self) -> str:
+        return self.id
 
     @model_validator(mode="after")
     def validate_value(self) -> FieldValue:
@@ -150,7 +166,6 @@ class FieldValue(Model):
         if self.scope is not Scope.GLOBAL and not self.scope_context:
             raise ValueError("website/application values require scope_context")
         return self
-
 
 class RepeatableRecord(Model):
     record_id: str = Field(min_length=1, max_length=128)
@@ -188,6 +203,11 @@ class ProfileSnapshot(Model):
         elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
         return self
+
+
+
+
+
 
 
 

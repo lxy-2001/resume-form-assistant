@@ -71,3 +71,27 @@ def test_confirmed_record_requires_a_field_and_unknown_properties_are_rejected()
                               default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
                               is_custom=True, allowed_scopes=[Scope.GLOBAL], created_at=TS,
                               updated_at=TS, unexpected="nope")
+
+def test_field_value_roundtrips_contract_metadata() -> None:
+    value = _field(id="email", is_custom=False, aliases=["邮箱"], options=None,
+                   validation={"format": "email"})
+    data = value.to_dict()
+    assert data["id"] == "email"
+    assert data["field_id"] == "email"
+    assert data["is_custom"] is False
+    assert ProfileSnapshot.from_json(ProfileSnapshot(profile_id="p", profile_version=1, fields=[value], records=[], field_definitions=[], created_at=TS, updated_at=TS).to_json()).fields[0].id == "email"
+
+
+def test_validation_rule_rejects_unknown_format() -> None:
+    with pytest.raises(ValueError):
+        from resume_agent.profile.models import ValidationRule
+        ValidationRule(format="unknown")
+
+
+def test_definition_subclasses_reject_conflicting_custom_flag() -> None:
+    with pytest.raises(ValueError):
+        from resume_agent.profile.models import StandardFieldDefinition
+        StandardFieldDefinition(id="std", label="Std", field_type=FieldType.TEXT,
+                                default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
+                                is_custom=True, allowed_scopes=[Scope.GLOBAL])
+
