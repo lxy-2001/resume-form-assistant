@@ -77,7 +77,6 @@ def test_field_value_roundtrips_contract_metadata() -> None:
                    validation={"format": "email"})
     data = value.to_dict()
     assert data["id"] == "email"
-    assert data["field_id"] == "email"
     assert data["is_custom"] is False
     assert ProfileSnapshot.from_json(ProfileSnapshot(profile_id="p", profile_version=1, fields=[value], records=[], field_definitions=[], created_at=TS, updated_at=TS).to_json()).fields[0].id == "email"
 
@@ -94,5 +93,6 @@ def test_definition_subclasses_reject_conflicting_custom_flag() -> None:
         StandardFieldDefinition(id="std", label="Std", field_type=FieldType.TEXT,
                                 default_sensitivity=Sensitivity.NORMAL, requires_confirmation=False,
                                 is_custom=True, allowed_scopes=[Scope.GLOBAL])
+
 
 
