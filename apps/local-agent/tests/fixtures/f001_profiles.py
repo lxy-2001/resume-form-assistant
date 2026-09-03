@@ -7,7 +7,6 @@ are implemented. They are not a copy of the shared contract schema.
 from copy import deepcopy
 from typing import Any
 
-
 PROFILE_ID = "profile-synthetic-f001-001"
 
 
@@ -30,7 +29,7 @@ def build_profile(*, include_sensitive: bool = True, include_records: bool = Tru
                 "options": ["alpha", "beta"],
                 "value": "alpha",
                 "sensitivity": "normal",
-                "scope": "profile",
+                "scope": "global",
             }
         ],
         "records": [],
