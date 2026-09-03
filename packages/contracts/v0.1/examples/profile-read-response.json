@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-profile-read-001",
+  "task_id": "task-profile-read-001",
+  "operation": "profile.read.result",
+  "task_state": "completed",
+  "profile": {
+    "profile_id": "profile-main",
+    "profile_version": 0,
+    "is_empty": true,
+    "fields": [],
+    "records": [],
+    "field_definitions": [
+      {
+        "id": "person.full_name",
+        "label": "示例姓名",
+        "field_type": "text",
+        "default_sensitivity": "normal",
+        "requires_confirmation": false,
+        "is_custom": false,
+        "allowed_scopes": ["global"]
+      }
+    ],
+    "created_at": "2026-09-03T08:00:00Z",
+    "updated_at": "2026-09-03T08:00:00Z"
+  },
+  "warnings": []
+}

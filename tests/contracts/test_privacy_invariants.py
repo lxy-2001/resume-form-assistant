@@ -68,8 +68,15 @@ def test_sensitive_profile_field_cannot_disable_confirmation() -> None:
         "value": "EXAMPLE-IDENTIFIER",
         "scope": "global",
         "sensitivity": "highly_sensitive",
-        "requires_confirmation": False,
+        "requires_confirmation": True,
+        "confirmed": True,
+        "source": {"kind": "manual"},
+        "updated_at": "2026-09-03T08:00:00Z",
     }
 
+    validator = validator_for("ProfileField")
+    validator.validate(payload)
+
+    payload["requires_confirmation"] = False
     with pytest.raises(ValidationError):
-        validator_for("ProfileField").validate(payload)
+        validator.validate(payload)

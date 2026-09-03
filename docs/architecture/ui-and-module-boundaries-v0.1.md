@@ -80,7 +80,7 @@ Popup 只作为快捷入口（打开 Side Panel、打开 Options Page、显示�
 
 ```text
 Options Page
-  → profile.upsert / profile.import.preview
+  → profile.read / profile.upsert / profile.delete / profile.export / profile.import.preview
   → 本地 Agent Parser、Normalizer、Validation
   → 候选（来源、置信度、疑问）
   → 用户确认/纠正
@@ -121,7 +121,10 @@ Options Page
 
 | 操作 | 请求方 → 处理方 | 主要契约定义 |
 | --- | --- | --- |
+| `profile.read` | Options Page → Agent | `ProfileReadRequest` / `ProfileReadResponse` |
 | `profile.upsert` | Options Page → Agent | `ProfileUpsertRequest` / `ProfileUpsertResponse` |
+| `profile.delete` | Options Page → Agent | `ProfileDeleteRequest` / `ProfileDeleteResponse` |
+| `profile.export` | Options Page → Agent | `ProfileExportRequest` / `ProfileExportResponse` |
 | `profile.import.preview` | Options Page → Agent | `ProfileImportPreviewRequest` / `ProfileImportPreview`（响应） |
 | `profile.import.confirm` | Options Page → Agent | `ProfileImportConfirmRequest` / `ProfileImportConfirmResponse` |
 | `page.scan` | Background → Agent | `ScanRequest` / `ScanResponse` |
@@ -150,6 +153,10 @@ idle
 - 不支持的控件进入 `unsupported`，提供人工处理入口；
 - 模型不可用时，规则能够继续处理简单字段，复杂字段标为待人工处理；
 - 重试不得重复执行已成功的动作，使用 `request_id`、`task_id` 和动作 ID 去重。
+- 资料写入、删除和导出使用 `expected_profile_version` 防止旧页面覆盖新资料；冲突必须返回
+  `STALE_PROFILE_VERSION` 并要求用户重新读取。
+- 完整资料删除若只完成加密快照或 keyring 引用中的一部分，必须返回 `partial` 和待清理项，
+  不得静默声称全部删除成功。
 
 ## 7. 暂不在基线中锁定的内容
 
@@ -168,5 +175,6 @@ idle
 - [x] 扩展、Agent、Provider、Policy 的边界明确；
 - [x] 资料录入、网页扫描、匹配、填写和撤销的数据流明确；
 - [x] 共享契约有唯一版本来源和逻辑操作目录；
+- [x] 资料读取、写入、删除和本地导出的生命周期操作及版本冲突语义明确；
 - [x] 契约禁止自动提交和任意脚本动作；
 - [x] 具体实现细节被明确留给 Feature 计划。

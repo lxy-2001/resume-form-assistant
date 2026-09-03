@@ -1,0 +1,7 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-profile-read-001",
+  "task_id": "task-profile-read-001",
+  "operation": "profile.read",
+  "profile_id": "profile-main"
+}

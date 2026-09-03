@@ -4,6 +4,8 @@
   "task_id": "task-profile-001",
   "operation": "profile.upsert.result",
   "task_state": "completed",
+  "profile_id": "profile-main",
+  "profile_version": 1,
   "written_field_ids": ["person.full_name"],
   "deleted_field_ids": [],
   "warnings": []

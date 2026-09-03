@@ -3,6 +3,8 @@
   "request_id": "req-profile-001",
   "task_id": "task-profile-001",
   "operation": "profile.upsert",
+  "profile_id": "profile-main",
+  "expected_profile_version": 0,
   "user_confirmed": true,
   "mode": "merge",
   "fields": [
@@ -14,9 +16,11 @@
       "scope": "global",
       "sensitivity": "normal",
       "requires_confirmation": false,
+      "confirmed": true,
       "source": {
         "kind": "manual"
-      }
+      },
+      "updated_at": "2026-09-03T08:00:00Z"
     }
   ]
 }

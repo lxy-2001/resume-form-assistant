@@ -41,6 +41,8 @@ def test_profile_upsert_rejects_an_empty_write_request() -> None:
 
 def test_profile_upsert_allows_an_explicit_delete_request() -> None:
     payload = envelope("profile.upsert")
+    payload["profile_id"] = "profile-main"
+    payload["expected_profile_version"] = 1
     payload["user_confirmed"] = True
     payload["delete_field_ids"] = ["person.full_name"]
 
