@@ -85,7 +85,7 @@ description: "Task list for F001 local profile library"
 - [x] T031 [US2] Implement custom-field collision, option, scope, and sensitivity validation in apps/local-agent/src/resume_agent/profile/validation.py.
 - [x] T032 [US2] Implement confirmed repeatable-record and custom-field operations with optimistic version checks in apps/local-agent/src/resume_agent/profile/service.py.
 - [x] T033 [US2] Expose repeatable-record and custom-field operations through the shared profile routes in apps/local-agent/src/resume_agent/api/profile_routes.py.
-- [x] T034 [US2] Add reusable record editor, custom-field editor, type-specific controls, and confirmation states in apps/extension/src/options/components/RecordEditor.tsx and apps/extension/src/options/components/CustomFieldEditor.tsx.
+- [x] T034 [US2] Add reusable record editor, custom-field editor, type-specific controls, and confirmation states in apps/extension/src/options/components/RecordEditor2.tsx and apps/extension/src/options/components/CustomFieldEditor.tsx.
 - [x] T035 [US2] Connect the new editors to the profile client and display scope, sensitivity, source, and confirmation metadata in apps/extension/src/options/ProfilePage.tsx and apps/extension/src/options/profileClient.ts.
 
 **Checkpoint**: US1 remains green and US2 can be demonstrated without document parsing, model calls, or browser pages.

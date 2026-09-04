@@ -47,7 +47,3 @@ no_implicit_optional = true
 
 [project.scripts]
 resume-agent = "resume_agent.main:main"
-
-
-
-
