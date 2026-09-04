@@ -42,9 +42,12 @@ def _system_backend_types() -> tuple[type[Any], ...]:
 DEFAULT_ALLOWED_BACKEND_TYPES = _system_backend_types()
 
 KeyMaterial = bytes
+
+
 @runtime_checkable
 class KeyProvider(Protocol):
     """Retrieve/provision/destroy opaque key material; unavailable backends return None."""
+
     def get_key(self) -> KeyMaterial | None: ...
     def provision_key(self) -> KeyMaterial | None: ...
     def destroy_key(self) -> bool: ...

@@ -66,3 +66,26 @@ contracts/profile-lifecycle.md。
 
 完成条件是所有测试通过，且每个 spec.md 功能需求至少有一个自动化场景或明确的
 人工验收记录。
+
+## F001 验证记录（2026-09-04）
+
+Scenario A（基本资料）由本地服务单元/契约测试、加密存储测试和 Options Page 测试覆盖；
+Scenario B（重复经历与自定义字段）由记录隔离、字段约束、路由和编辑器测试覆盖；
+Scenario C（隐私、导出与删除）由生命周期、恢复、隐私边界和导出/删除 UI 测试覆盖。
+这些场景均使用合成资料，不连接招聘网站、远程模型或云端账户。
+
+本次检查结果：
+
+- 本地 Agent：`python -m pytest -q` → **181 passed, 2 warnings**；
+- 扩展：`pnpm test -- --run` → **8 files passed, 21 tests passed**；
+- 扩展类型检查：`pnpm typecheck` → **passed**；
+- 扩展 Lint：`pnpm lint` → **passed**；
+- 扩展构建：`pnpm build` → **passed**；
+- 共享契约与隐私审计：`pytest -q tests/contracts tests/security` → **57 passed**；
+- Python 静态检查：Ruff check → **All checks passed**；Ruff format check → **54 files already formatted**；
+- Python 类型检查：mypy → **Success: no issues found in 20 source files**；
+- 性能夹具：500 字段值、100 条重复经历读取测试 → **1 passed**。
+
+F001 不包含生产服务安装器、浏览器扩展打包清单或招聘网站实页操作；这些属于后续
+F004/F017 等 Feature。当前可验证边界是本地资料库逻辑、Options Page 交互、共享契约和
+隐私/恢复规则。

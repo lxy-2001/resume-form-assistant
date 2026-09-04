@@ -82,7 +82,9 @@ class _MalformedKeyProvider:
         return False
 
 
-def test_uninitialized_store_reads_none_and_delete_is_idempotent(tmp_path: Path, fake_key_provider: object) -> None:
+def test_uninitialized_store_reads_none_and_delete_is_idempotent(
+    tmp_path: Path, fake_key_provider: object
+) -> None:
     path = tmp_path / "profile.enc.json"
     store = EncryptedJsonProfileStore(path, fake_key_provider)
 
@@ -120,7 +122,9 @@ def test_missing_or_malformed_key_fails_closed_without_creating_snapshot(tmp_pat
         assert path.exists() is False
 
 
-def test_wrong_key_and_tampered_ciphertext_raise_recovery_error(tmp_path: Path, fake_key_provider: object) -> None:
+def test_wrong_key_and_tampered_ciphertext_raise_recovery_error(
+    tmp_path: Path, fake_key_provider: object
+) -> None:
     path = tmp_path / "profile.enc.json"
     writer = EncryptedJsonProfileStore(path, fake_key_provider)
     writer.write(_snapshot())
@@ -134,7 +138,9 @@ def test_wrong_key_and_tampered_ciphertext_raise_recovery_error(tmp_path: Path, 
 
     envelope = json.loads(path.read_text(encoding="utf-8"))
     ciphertext = base64.b64decode(envelope["ciphertext"])
-    envelope["ciphertext"] = base64.b64encode(bytes([ciphertext[0] ^ 1]) + ciphertext[1:]).decode("ascii")
+    envelope["ciphertext"] = base64.b64encode(bytes([ciphertext[0] ^ 1]) + ciphertext[1:]).decode(
+        "ascii"
+    )
     path.write_text(json.dumps(envelope), encoding="utf-8")
     with pytest.raises(StorageCorruptOrUnrecoverableError):
         writer.read()
@@ -168,4 +174,3 @@ def test_no_plaintext_is_left_in_main_temp_or_backup_artifacts(
     for artifact in tmp_path.rglob("*"):
         if artifact.is_file():
             assert b"Synthetic Test Person" not in artifact.read_bytes()
-

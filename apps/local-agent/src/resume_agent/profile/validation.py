@@ -72,7 +72,9 @@ def _check_common(value: str, field_type: FieldType, rule: ValidationRule | None
     return normalized
 
 
-def _check_allowed(value: Any, field_type: FieldType, rule: ValidationRule | None, options: list[Any] | None) -> None:
+def _check_allowed(
+    value: Any, field_type: FieldType, rule: ValidationRule | None, options: list[Any] | None
+) -> None:
     allowed = options
     if rule is not None and rule.allowed_values is not None:
         allowed = list(rule.allowed_values)
@@ -116,7 +118,7 @@ def validate_value(
             if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
                 raise _invalid(kind, "format")
         elif constraints is not None and constraints.format == "postal_code":
-            if not re.fullmatch(r"\\d{6}", normalized):
+            if not re.fullmatch(r"\d{6}", normalized):
                 raise _invalid(kind, "format")
         elif constraints is not None and constraints.format not in (None, ""):
             raise _invalid(kind, "format")
@@ -205,7 +207,9 @@ def validate_value(
     raise _invalid(kind, "unsupported")
 
 
-def validate_field_value(field: FieldValue, definition: FieldDefinition | None = None) -> FieldValue:
+def validate_field_value(
+    field: FieldValue, definition: FieldDefinition | None = None
+) -> FieldValue:
     """Validate and return a copied field with a normalized value."""
 
     field_type = definition.field_type if definition is not None else field.field_type

@@ -74,19 +74,19 @@ description: "Task list for F001 local profile library"
 
 ### Tests for User Story 2 (write first and observe failure)
 
-- [ ] T026 [P] [US2] Add repeatable-record isolation, ordering, and deletion tests in apps/local-agent/tests/unit/test_repeatable_records.py.
-- [ ] T027 [P] [US2] Add custom-field type, option, scope, sensitivity, confirmation, and reserved-ID collision tests in apps/local-agent/tests/unit/test_custom_fields.py.
-- [ ] T028 [P] [US2] Add API contract tests for custom definitions and repeatable-record mutations in apps/local-agent/tests/contract/test_profile_custom_fields.py.
-- [ ] T029 [P] [US2] Add Options Page tests for adding, editing, reordering, deleting records and cancelling custom-field creation in apps/extension/tests/options/custom-fields.test.tsx.
+- [x] T026 [P] [US2] Add repeatable-record isolation, ordering, and deletion tests in apps/local-agent/tests/unit/test_repeatable_records.py.
+- [x] T027 [P] [US2] Add custom-field type, option, scope, sensitivity, confirmation, and reserved-ID collision tests in apps/local-agent/tests/unit/test_custom_fields.py.
+- [x] T028 [P] [US2] Add API contract tests for custom definitions and repeatable-record mutations in apps/local-agent/tests/contract/test_profile_custom_fields.py.
+- [x] T029 [P] [US2] Add Options Page tests for adding, editing, reordering, deleting records and cancelling custom-field creation in apps/extension/tests/options/custom-fields.test.tsx.
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Extend domain models and serialization for repeatable records and custom definitions in apps/local-agent/src/resume_agent/profile/models.py.
-- [ ] T031 [US2] Implement custom-field collision, option, scope, and sensitivity validation in apps/local-agent/src/resume_agent/profile/validation.py.
-- [ ] T032 [US2] Implement confirmed repeatable-record and custom-field operations with optimistic version checks in apps/local-agent/src/resume_agent/profile/service.py.
-- [ ] T033 [US2] Expose repeatable-record and custom-field operations through the shared profile routes in apps/local-agent/src/resume_agent/api/profile_routes.py.
-- [ ] T034 [US2] Add reusable record editor, custom-field editor, type-specific controls, and confirmation states in apps/extension/src/options/components/RecordEditor.tsx and apps/extension/src/options/components/CustomFieldEditor.tsx.
-- [ ] T035 [US2] Connect the new editors to the profile client and display scope, sensitivity, source, and confirmation metadata in apps/extension/src/options/ProfilePage.tsx and apps/extension/src/options/profileClient.ts.
+- [x] T030 [US2] Extend domain models and serialization for repeatable records and custom definitions in apps/local-agent/src/resume_agent/profile/models.py.
+- [x] T031 [US2] Implement custom-field collision, option, scope, and sensitivity validation in apps/local-agent/src/resume_agent/profile/validation.py.
+- [x] T032 [US2] Implement confirmed repeatable-record and custom-field operations with optimistic version checks in apps/local-agent/src/resume_agent/profile/service.py.
+- [x] T033 [US2] Expose repeatable-record and custom-field operations through the shared profile routes in apps/local-agent/src/resume_agent/api/profile_routes.py.
+- [x] T034 [US2] Add reusable record editor, custom-field editor, type-specific controls, and confirmation states in apps/extension/src/options/components/RecordEditor.tsx and apps/extension/src/options/components/CustomFieldEditor.tsx.
+- [x] T035 [US2] Connect the new editors to the profile client and display scope, sensitivity, source, and confirmation metadata in apps/extension/src/options/ProfilePage.tsx and apps/extension/src/options/profileClient.ts.
 
 **Checkpoint**: US1 remains green and US2 can be demonstrated without document parsing, model calls, or browser pages.
 
@@ -98,20 +98,20 @@ description: "Task list for F001 local profile library"
 
 ### Tests for User Story 3 (write first and observe failure)
 
-- [ ] T036 [P] [US3] Add export-scope, format, confirmation, cancellation, and no-upload tests in apps/local-agent/tests/unit/test_profile_export.py.
-- [ ] T037 [P] [US3] Add deletion, key-reference cleanup, empty-state, and idempotency tests in apps/local-agent/tests/unit/test_profile_delete.py.
-- [ ] T038 [P] [US3] Add corrupted-file, missing-key, invalid-tag, untrusted-backend, interrupted-write, fsync/replace failure, recovery-message, and plaintext-leak tests in apps/local-agent/tests/integration/test_storage_recovery.py.
-- [ ] T039 [P] [US3] Add API contract tests for profile.delete and profile.export errors, selected scopes, and stale versions in apps/local-agent/tests/contract/test_profile_lifecycle.py.
-- [ ] T040 [P] [US3] Add Options Page tests for metadata display, export scope confirmation, deletion confirmation, cancellation, and failure feedback in apps/extension/tests/options/profile-lifecycle.test.tsx.
-- [ ] T041 [P] [US3] Add outbound-request and log-redaction assertions for all F001 operations in apps/local-agent/tests/integration/test_privacy_boundary.py.
+- [x] T036 [P] [US3] Add export-scope, format, confirmation, cancellation, and no-upload tests in apps/local-agent/tests/unit/test_profile_export.py.
+- [x] T037 [P] [US3] Add deletion, key-reference cleanup, empty-state, and idempotency tests in apps/local-agent/tests/unit/test_profile_delete.py.
+- [x] T038 [P] [US3] Add corrupted-file, missing-key, invalid-tag, untrusted-backend, interrupted-write, fsync/replace failure, recovery-message, and plaintext-leak tests in apps/local-agent/tests/integration/test_storage_recovery.py.
+- [x] T039 [P] [US3] Add API contract tests for profile.delete and profile.export errors, selected scopes, and stale versions in apps/local-agent/tests/contract/test_profile_lifecycle.py.
+- [x] T040 [P] [US3] Add Options Page tests for metadata display, export scope confirmation, deletion confirmation, cancellation, and failure feedback in apps/extension/tests/options/profile-lifecycle.test.tsx.
+- [x] T041 [P] [US3] Add outbound-request and log-redaction assertions for all F001 operations in apps/local-agent/tests/integration/test_privacy_boundary.py.
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Implement selected-scope export with versioned structured output, user-chosen destination, and no-upload behavior in apps/local-agent/src/resume_agent/profile/export_service.py.
-- [ ] T043 [US3] Implement confirmed field/record/profile deletion and idempotency in apps/local-agent/src/resume_agent/profile/service.py; destroy the key reference only after confirmed full-profile deletion and successful encrypted-file removal in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
-- [ ] T044 [US3] Expose profile.delete and profile.export with structured errors and response metadata in apps/local-agent/src/resume_agent/api/profile_routes.py.
-- [ ] T045 [US3] Add metadata panels, export scope dialog, deletion confirmations, and recoverable error states in apps/extension/src/options/components/ProfileMetadata.tsx and apps/extension/src/options/components/ProfileLifecycleDialogs.tsx.
-- [ ] T046 [US3] Connect export and delete actions and refresh the profile snapshot after each confirmed mutation in apps/extension/src/options/ProfilePage.tsx and apps/extension/src/options/profileClient.ts.
+- [x] T042 [US3] Implement selected-scope export with versioned structured output, user-chosen destination, and no-upload behavior in apps/local-agent/src/resume_agent/profile/export_service.py.
+- [x] T043 [US3] Implement confirmed field/record/profile deletion and idempotency in apps/local-agent/src/resume_agent/profile/service.py; destroy the key reference only after confirmed full-profile deletion and successful encrypted-file removal in apps/local-agent/src/resume_agent/storage/encrypted_json.py.
+- [x] T044 [US3] Expose profile.delete and profile.export with structured errors and response metadata in apps/local-agent/src/resume_agent/api/profile_routes.py.
+- [x] T045 [US3] Add metadata panels, export scope dialog, deletion confirmations, and recoverable error states in apps/extension/src/options/components/ProfileMetadata.tsx and apps/extension/src/options/components/ProfileLifecycleDialogs.tsx.
+- [x] T046 [US3] Connect export and delete actions and refresh the profile snapshot after each confirmed mutation in apps/extension/src/options/ProfilePage.tsx and apps/extension/src/options/profileClient.ts.
 
 **Checkpoint**: US1, US2, and US3 pass their independent tests; no personal data leaves the local process.
 
@@ -119,13 +119,13 @@ description: "Task list for F001 local profile library"
 
 **Purpose**: Verify non-functional requirements and keep documentation, packaging, and privacy boundaries aligned.
 
-- [ ] T047 [P] Add performance fixtures for 500 field values and 100 repeatable records in apps/local-agent/tests/performance/test_profile_latency.py.
-- [ ] T048 [P] Add keyboard navigation, labels, focus order, and accessible error requirements tests in apps/extension/tests/options/accessibility.test.tsx.
-- [ ] T049 [P] Add dependency and secret scans plus a synthetic-data audit in tests/security/test_f001_privacy_audit.py.
-- [ ] T050 [P] Update apps/local-agent/README.md and apps/extension/README.md with local setup, key recovery limits, and data deletion/export guidance.
-- [ ] T051 Run the scenarios in specs/001-profile-library/quickstart.md and record results in the F001 pull request.
-- [ ] T052 Run Python tests, TypeScript tests, type checks, formatters, contract checks, and privacy audits; record exact results in specs/001-profile-library/quickstart.md.
-- [ ] T053 Update docs/product/roadmap.md from Specifying to Implementing/Reviewing only at the corresponding verified milestone.
+- [x] T047 [P] Add performance fixtures for 500 field values and 100 repeatable records in apps/local-agent/tests/performance/test_profile_latency.py.
+- [x] T048 [P] Add keyboard navigation, labels, focus order, and accessible error requirements tests in apps/extension/tests/options/accessibility.test.tsx.
+- [x] T049 [P] Add dependency and secret scans plus a synthetic-data audit in tests/security/test_f001_privacy_audit.py.
+- [x] T050 [P] Update apps/local-agent/README.md and apps/extension/README.md with local setup, key recovery limits, and data deletion/export guidance.
+- [x] T051 Run the scenarios in specs/001-profile-library/quickstart.md and record results in the F001 pull request.
+- [x] T052 Run Python tests, TypeScript tests, type checks, formatters, contract checks, and privacy audits; record exact results in specs/001-profile-library/quickstart.md.
+- [x] T053 Update docs/product/roadmap.md from Specifying to Implementing/Reviewing only at the corresponding verified milestone.
 
 ## Dependencies and Execution Order
 

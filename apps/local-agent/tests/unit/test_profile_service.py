@@ -70,7 +70,9 @@ def _service(store: ProfileStore, *times: datetime) -> ProfileService:
     )
 
 
-def test_empty_read_returns_distinct_empty_snapshot_without_write(fake_profile_store: ProfileStore) -> None:
+def test_empty_read_returns_distinct_empty_snapshot_without_write(
+    fake_profile_store: ProfileStore,
+) -> None:
     service = _service(fake_profile_store)
 
     snapshot = service.read(PROFILE_ID)
@@ -90,7 +92,10 @@ def test_create_persist_restart_and_read_back(
     first = datetime(2099, 1, 1, tzinfo=UTC)
     second = datetime(2099, 1, 2, tzinfo=UTC)
     service = _service(fake_profile_store, first, second)
-    fields = [_field("person.full_name", "Synthetic Test Person", first), _field("contact.email", "person@example.invalid", first, field_type=FieldType.EMAIL)]
+    fields = [
+        _field("person.full_name", "Synthetic Test Person", first),
+        _field("contact.email", "person@example.invalid", first, field_type=FieldType.EMAIL),
+    ]
 
     saved = service.upsert(
         PROFILE_ID,
@@ -215,4 +220,3 @@ def test_unconfirmed_mutation_is_rejected_without_write(fake_profile_store: Prof
         )
 
     assert fake_profile_store.write_calls == 0
-

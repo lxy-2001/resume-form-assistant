@@ -10,7 +10,9 @@ from resume_agent.privacy.redaction import redact_details, redact_text
 class LifecycleError(Exception):
     code: ClassVar[str] = "LIFECYCLE_ERROR"
 
-    def __init__(self, message: str | None = None, *, details: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, message: str | None = None, *, details: dict[str, Any] | None = None
+    ) -> None:
         self.message = redact_text(message or self.code)
         self.details = redact_details(details or {})
         super().__init__(self.message)

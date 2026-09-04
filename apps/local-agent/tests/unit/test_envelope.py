@@ -81,7 +81,9 @@ def test_wrong_key_tamper_and_aad_mismatch_fail_closed() -> None:
 
     tampered = dict(payload)
     ciphertext = base64.b64decode(str(payload["ciphertext"]))
-    tampered["ciphertext"] = base64.b64encode(bytes([ciphertext[0] ^ 1]) + ciphertext[1:]).decode("ascii")
+    tampered["ciphertext"] = base64.b64encode(bytes([ciphertext[0] ^ 1]) + ciphertext[1:]).decode(
+        "ascii"
+    )
     with pytest.raises(StorageCorruptOrUnrecoverableError):
         decode_envelope(tampered, KEY, aad=AAD)
 

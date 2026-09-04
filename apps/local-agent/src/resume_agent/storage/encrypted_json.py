@@ -30,7 +30,9 @@ NONCE_LENGTH = 12
 DEFAULT_AAD = b"resume-agent/profile/v1"
 
 
-def _corrupt(message: str = "profile data is corrupt or unrecoverable") -> StorageCorruptOrUnrecoverableError:
+def _corrupt(
+    message: str = "profile data is corrupt or unrecoverable",
+) -> StorageCorruptOrUnrecoverableError:
     return StorageCorruptOrUnrecoverableError(message)
 
 
@@ -52,7 +54,9 @@ def _b64(value: object, name: str) -> bytes:
     try:
         return base64.b64decode(value.encode("ascii"), validate=True)
     except (UnicodeEncodeError, ValueError, binascii.Error) as exc:
-        raise _corrupt(f"encrypted envelope {name} is malformed") from exc
+        raise _corrupt(
+            f"encrypted envelope {name} is malformed; profile data is corrupt or unrecoverable"
+        ) from exc
 
 
 def encode_envelope(
@@ -117,7 +121,14 @@ def decode_envelope(
         plaintext = AESGCM(key_bytes).decrypt(nonce, ciphertext, aad_bytes)
         decoded = json.loads(plaintext.decode("utf-8"))
         return ProfileSnapshot.model_validate(decoded)
-    except (InvalidTag, UnicodeDecodeError, json.JSONDecodeError, ValidationError, TypeError, ValueError) as exc:
+    except (
+        InvalidTag,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValidationError,
+        TypeError,
+        ValueError,
+    ) as exc:
         raise _corrupt("profile authentication or decoding failed") from exc
 
 
@@ -234,7 +245,9 @@ class EncryptedJsonProfileStore:
             raise _corrupt("profile snapshot is invalid")
         with self._lock:
             envelope = encode_envelope(snapshot, self._key_for_write(), aad=self.aad)
-            payload = json.dumps(envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            payload = json.dumps(
+                envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
             try:
                 self.atomic_writer.write_atomic(self.path, payload)
             except StorageCorruptOrUnrecoverableError:
@@ -248,6 +261,18 @@ class EncryptedJsonProfileStore:
                 self.path.unlink(missing_ok=True)
             except OSError as exc:
                 raise StorageUnavailableError("profile file could not be deleted") from exc
+
+    def delete_profile_data(self) -> None:
+        """Remove the encrypted snapshot, then clear its key reference."""
+
+        with self._lock:
+            self.delete()
+            try:
+                self.key_provider.destroy_key()
+            except StorageUnavailableError:
+                raise
+            except Exception as exc:
+                raise StorageUnavailableError("encryption key could not be deleted") from exc
 
 
 __all__ = [

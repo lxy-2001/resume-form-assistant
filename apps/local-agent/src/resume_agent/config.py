@@ -73,7 +73,11 @@ class AppConfig:
     def __post_init__(self) -> None:
         object.__setattr__(self, "data_root", _normalize_root(self.data_root))
         object.__setattr__(self, "host", _validate_host(self.host))
-        if isinstance(self.port, bool) or not isinstance(self.port, int) or not 1 <= self.port <= 65_535:
+        if (
+            isinstance(self.port, bool)
+            or not isinstance(self.port, int)
+            or not 1 <= self.port <= 65_535
+        ):
             raise ValueError("port must be an integer from 1 through 65535")
         if (
             isinstance(self.request_limit, bool)

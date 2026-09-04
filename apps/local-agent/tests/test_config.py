@@ -37,9 +37,9 @@ def test_only_loopback_host_is_allowed(tmp_path: Path, host: str) -> None:
         AppConfig(tmp_path.absolute(), host=host)
 
 
-
 def test_ipv6_loopback_is_allowed(tmp_path: Path) -> None:
     assert AppConfig(tmp_path.absolute(), host="::1").host == "::1"
+
 
 @pytest.mark.parametrize("port", [0, 65536, -1, True, "8765"])
 def test_port_is_safe(tmp_path: Path, port: object) -> None:

@@ -405,6 +405,24 @@
             "required": ["is_custom"]
           },
           "then": {"required": ["created_at", "updated_at"]}
+        },
+        {
+          "if": {
+            "properties": {"is_custom": {"const": true}},
+            "required": ["is_custom"]
+          },
+          "then": {
+            "properties": {"field_type": {"enum": ["text", "date", "number", "boolean", "enum", "multivalue"]}},
+            "allOf": [
+              {
+                "if": {
+                  "properties": {"field_type": {"enum": ["enum", "multivalue"]}},
+                  "required": ["field_type"]
+                },
+                "then": {"required": ["options"], "properties": {"options": {"minItems": 1}}}
+              }
+            ]
+          }
         }
       ]
     },
@@ -662,16 +680,53 @@
               "type": "array",
               "items": {"$ref": "#/$defs/ProfileField"}
             },
+            "records": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/ProfileRecord"}
+            },
+            "custom_field_definitions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ProfileFieldDefinition",
+                "properties": {"is_custom": {"const": true}},
+                "required": ["is_custom"]
+              }
+            },
             "delete_field_ids": {
               "type": "array",
               "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "delete_record_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "delete_custom_field_definition_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "record_order": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "minItems": 1,
               "uniqueItems": true
             },
             "mode": {"type": "string", "enum": ["merge"]}
           },
           "anyOf": [
             {"required": ["fields"], "properties": {"fields": {"minItems": 1}}},
-            {"required": ["delete_field_ids"], "properties": {"delete_field_ids": {"minItems": 1}}}
+            {"required": ["delete_field_ids"], "properties": {"delete_field_ids": {"minItems": 1}}},
+            {"required": ["records"], "properties": {"records": {"minItems": 1}}},
+            {"required": ["custom_field_definitions"], "properties": {"custom_field_definitions": {"minItems": 1}}},
+            {"required": ["delete_record_ids"], "properties": {"delete_record_ids": {"minItems": 1}}},
+            {"required": ["delete_custom_field_definition_ids"], "properties": {"delete_custom_field_definition_ids": {"minItems": 1}}},
+            {"required": ["record_order"], "properties": {"record_order": {"minItems": 1}}}
           ]
         }
       ],
@@ -688,6 +743,11 @@
             "profile_version",
             "written_field_ids",
             "deleted_field_ids",
+            "written_record_ids",
+            "deleted_record_ids",
+            "written_custom_field_definition_ids",
+            "deleted_custom_field_definition_ids",
+            "record_order",
             "warnings"
           ],
           "properties": {
@@ -700,6 +760,31 @@
               "uniqueItems": true
             },
             "deleted_field_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "written_record_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "deleted_record_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "written_custom_field_definition_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "deleted_custom_field_definition_ids": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/Id"},
+              "uniqueItems": true
+            },
+            "record_order": {
               "type": "array",
               "items": {"$ref": "#/$defs/Id"},
               "uniqueItems": true

@@ -37,8 +37,26 @@ class _ShapeValidator:
         master = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         assert self.definition in master["$defs"]
         required = {
-            "ProfileReadResponse": {"schema_version", "request_id", "task_id", "operation", "task_state", "profile", "warnings"},
-            "ProfileUpsertResponse": {"schema_version", "request_id", "task_id", "operation", "profile_id", "profile_version", "written_field_ids", "deleted_field_ids", "warnings"},
+            "ProfileReadResponse": {
+                "schema_version",
+                "request_id",
+                "task_id",
+                "operation",
+                "task_state",
+                "profile",
+                "warnings",
+            },
+            "ProfileUpsertResponse": {
+                "schema_version",
+                "request_id",
+                "task_id",
+                "operation",
+                "profile_id",
+                "profile_version",
+                "written_field_ids",
+                "deleted_field_ids",
+                "warnings",
+            },
             "ErrorResponse": {"schema_version", "request_id", "task_id", "operation", "error"},
         }[self.definition]
         assert required <= payload.keys()
@@ -135,7 +153,16 @@ def test_profile_upsert_success_matches_master_contract(
     ("body", "expected_status"),
     [
         ({"operation": "profile.read", "profile_id": PROFILE_ID}, 400),
-        ({**_envelope("profile.upsert"), "profile_id": PROFILE_ID, "expected_profile_version": 0, "user_confirmed": False, "fields": [_field().to_dict()]}, 400),
+        (
+            {
+                **_envelope("profile.upsert"),
+                "profile_id": PROFILE_ID,
+                "expected_profile_version": 0,
+                "user_confirmed": False,
+                "fields": [_field().to_dict()],
+            },
+            400,
+        ),
         ({**_envelope("unknown"), "profile_id": PROFILE_ID}, 400),
     ],
 )
@@ -173,4 +200,3 @@ def test_stale_upsert_returns_structured_error_without_body_echo(
     assert response.status_code == 409
     _validator("ErrorResponse").validate(response.json())
     assert "Stale Synthetic Value" not in response.text
-

@@ -52,8 +52,10 @@ def _error_payload(
         error["details"] = redact_details(details)
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
-        "request_id": _id_from_header(request, "x-request-id", "local-request"),
-        "task_id": _id_from_header(request, "x-task-id", "local-task"),
+        "request_id": getattr(request.state, "request_id", None)
+        or _id_from_header(request, "x-request-id", "local-request"),
+        "task_id": getattr(request.state, "task_id", None)
+        or _id_from_header(request, "x-task-id", "local-task"),
         "operation": "error",
         "error": error,
     }
@@ -63,7 +65,9 @@ def _error_payload(
 
 
 def _typed_error_response(request: Request, exc: LifecycleError, status_code: int) -> JSONResponse:
-    failed_operation = request.headers.get("x-operation")
+    failed_operation = getattr(request.state, "operation", None) or request.headers.get(
+        "x-operation"
+    )
     payload = _error_payload(
         request,
         code=exc.code,
@@ -224,6 +228,7 @@ def create_app(
 
     if profile_service is not None:
         from resume_agent.api.profile_routes import register_profile_routes
+
         register_profile_routes(app, profile_service)
 
     return app

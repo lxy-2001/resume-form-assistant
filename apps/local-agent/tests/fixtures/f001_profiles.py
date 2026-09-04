@@ -10,7 +10,9 @@ from typing import Any
 PROFILE_ID = "profile-synthetic-f001-001"
 
 
-def build_profile(*, include_sensitive: bool = True, include_records: bool = True) -> dict[str, Any]:
+def build_profile(
+    *, include_sensitive: bool = True, include_records: bool = True
+) -> dict[str, Any]:
     """Build a representative ordinary F001 profile snapshot."""
     profile: dict[str, Any] = {
         "profile_id": PROFILE_ID,
@@ -42,15 +44,42 @@ def build_profile(*, include_sensitive: bool = True, include_records: bool = Tru
         }
     if include_records:
         profile["records"] = [
-            {"record_id": "edu-synthetic-001", "record_type": "education", "school": "Synthetic University", "degree": "Example Degree", "start_date": "2095-09-01", "end_date": "2099-06-30"},
-            {"record_id": "work-synthetic-001", "record_type": "work", "employer": "Synthetic Labs", "title": "Example Intern", "start_date": "2098-07-01", "end_date": "2098-09-30"},
-            {"record_id": "project-synthetic-001", "record_type": "project", "name": "Example Project", "description": "Synthetic project description for tests.", "role": "Example Contributor"},
+            {
+                "record_id": "edu-synthetic-001",
+                "record_type": "education",
+                "school": "Synthetic University",
+                "degree": "Example Degree",
+                "start_date": "2095-09-01",
+                "end_date": "2099-06-30",
+            },
+            {
+                "record_id": "work-synthetic-001",
+                "record_type": "work",
+                "employer": "Synthetic Labs",
+                "title": "Example Intern",
+                "start_date": "2098-07-01",
+                "end_date": "2098-09-30",
+            },
+            {
+                "record_id": "project-synthetic-001",
+                "record_type": "project",
+                "name": "Example Project",
+                "description": "Synthetic project description for tests.",
+                "role": "Example Contributor",
+            },
         ]
     return profile
 
 
 def build_empty_profile() -> dict[str, Any]:
-    return {"profile_id": PROFILE_ID, "profile_version": 0, "is_empty": True, "fields": {}, "records": [], "custom_fields": []}
+    return {
+        "profile_id": PROFILE_ID,
+        "profile_version": 0,
+        "is_empty": True,
+        "fields": {},
+        "records": [],
+        "custom_fields": [],
+    }
 
 
 def build_invalid_candidates() -> list[dict[str, Any]]:
@@ -58,7 +87,12 @@ def build_invalid_candidates() -> list[dict[str, Any]]:
     return [
         {"field_id": "email", "value": "not-an-email", "sensitivity": "normal"},
         {"field_id": "graduation_date", "value": "2099-99-99", "sensitivity": "normal"},
-        {"field_id": "government_id", "value": "SYNTHETIC-ID-NOT-VALID", "sensitivity": "highly_sensitive", "requires_confirmation": False},
+        {
+            "field_id": "government_id",
+            "value": "SYNTHETIC-ID-NOT-VALID",
+            "sensitivity": "highly_sensitive",
+            "requires_confirmation": False,
+        },
     ]
 
 

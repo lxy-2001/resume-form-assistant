@@ -42,11 +42,19 @@ class ConfirmationPolicy:
         if not user_confirmed:
             raise ConfirmationRequiredError("explicit user confirmation is required")
         for item in fields:
-            if self.requires_field_confirmation(item) and not bool(getattr(item, "confirmed", True)):
+            if self.requires_field_confirmation(item) and not bool(
+                getattr(item, "confirmed", True)
+            ):
                 raise ConfirmationRequiredError("field confirmation is required")
 
-    def require(self, user_confirmed: bool, item: FieldDefinition | FieldValue | None = None) -> None:
-        if not user_confirmed or (item is not None and self.requires_field_confirmation(item) and not bool(getattr(item, "confirmed", True))):
+    def require(
+        self, user_confirmed: bool, item: FieldDefinition | FieldValue | None = None
+    ) -> None:
+        if not user_confirmed or (
+            item is not None
+            and self.requires_field_confirmation(item)
+            and not bool(getattr(item, "confirmed", True))
+        ):
             raise ConfirmationRequiredError("explicit user confirmation is required")
 
 

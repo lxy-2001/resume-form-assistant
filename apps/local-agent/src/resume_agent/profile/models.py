@@ -3,11 +3,26 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+CONTRACT_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+_CONTRACT_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
+MAX_CONTRACT_ID_LENGTH = 128
+
+
+def is_contract_id(value: object) -> bool:
+    """Return whether a value satisfies the shared v0.1 Id contract."""
+
+    return (
+        isinstance(value, str)
+        and len(value) <= MAX_CONTRACT_ID_LENGTH
+        and _CONTRACT_ID_RE.fullmatch(value) is not None
+    )
 
 
 class FieldType(StrEnum):
@@ -66,12 +81,14 @@ class Model(BaseModel):
         return cls.model_validate_json(payload)
 
 
-
-
 class Source(Model):
     kind: SourceKind
-    profile_field_id: str | None = Field(default=None, min_length=1, max_length=128)
-    document_ref: str | None = Field(default=None, min_length=1, max_length=128)
+    profile_field_id: str | None = Field(
+        default=None, min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN
+    )
+    document_ref: str | None = Field(
+        default=None, min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN
+    )
     location: str | None = Field(default=None, min_length=1)
     detail: str | None = Field(default=None, min_length=1)
 
@@ -94,7 +111,7 @@ class PageOption(Model):
 
 
 class FieldDefinition(Model):
-    id: str = Field(min_length=1, max_length=128)
+    id: str = Field(min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN)
     label: str = Field(min_length=1)
     field_type: FieldType
     default_sensitivity: Sensitivity
@@ -111,9 +128,30 @@ class FieldDefinition(Model):
     def validate_definition(self) -> FieldDefinition:
         if self.default_sensitivity != Sensitivity.NORMAL and not self.requires_confirmation:
             raise ValueError("sensitive definitions require confirmation")
-        if self.is_custom and (self.created_at is None or self.updated_at is None):
-            raise ValueError("custom definitions require creation and update timestamps")
-        if self.field_type == FieldType.ENUM and not self.options:
+        if self.is_custom:
+            if self.created_at is None or self.updated_at is None:
+                raise ValueError("custom definitions require creation and update timestamps")
+            if not re.fullmatch(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$", self.id):
+                raise ValueError("custom definition id has invalid format")
+            if not self.label.strip():
+                raise ValueError("custom definition label cannot be blank")
+            allowed = {
+                FieldType.TEXT,
+                FieldType.DATE,
+                FieldType.NUMBER,
+                FieldType.BOOLEAN,
+                FieldType.ENUM,
+                FieldType.MULTIVALUE,
+            }
+            if self.field_type not in allowed:
+                raise ValueError("custom definition field type is unsupported")
+            if self.field_type in {FieldType.ENUM, FieldType.MULTIVALUE} and not self.options:
+                raise ValueError("enum and multivalue definitions require options")
+            if self.options:
+                values = [option.value for option in self.options]
+                if len({repr(value) for value in values}) != len(values):
+                    raise ValueError("custom definition options must be unique")
+        elif self.field_type == FieldType.ENUM and not self.options:
             raise ValueError("enum definitions require options")
         return self
 
@@ -136,12 +174,14 @@ class FieldValue(Model):
             data.pop("field_id")
         return data
 
-    id: str = Field(min_length=1, max_length=128)
+    id: str = Field(min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN)
     label: str = Field(min_length=1)
     field_type: FieldType
     value: Any
     scope: Scope
-    scope_context: str | None = Field(default=None, min_length=1, max_length=128)
+    scope_context: str | None = Field(
+        default=None, min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN
+    )
     sensitivity: Sensitivity
     requires_confirmation: bool
     confirmed: bool
@@ -168,10 +208,11 @@ class FieldValue(Model):
             raise ValueError("website/application values require scope_context")
         return self
 
+
 class RepeatableRecord(Model):
-    record_id: str = Field(min_length=1, max_length=128)
+    record_id: str = Field(min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN)
     record_type: ProfileRecordType
-    position: int = Field(ge=0)
+    position: int = Field(strict=True, ge=0)
     fields: list[FieldValue]
     confirmed: bool
     created_at: datetime
@@ -187,12 +228,12 @@ class RepeatableRecord(Model):
 
 
 class ProfileSnapshot(Model):
-    profile_id: str = Field(min_length=1, max_length=128)
-    profile_version: int = Field(ge=0)
+    profile_id: str = Field(min_length=1, max_length=128, pattern=CONTRACT_ID_PATTERN)
+    profile_version: int = Field(strict=True, ge=0)
     is_empty: bool | None = None
     fields: list[FieldValue]
     records: list[RepeatableRecord]
-    field_definitions: list[FieldDefinition]
+    field_definitions: list[StandardFieldDefinition | CustomFieldDefinition]
     created_at: datetime
     updated_at: datetime
 
@@ -204,30 +245,3 @@ class ProfileSnapshot(Model):
         elif self.is_empty != actual_empty:
             raise ValueError("is_empty must match whether fields and records are present")
         return self
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -94,9 +94,7 @@ def test_allowlisted_backend_provisions_and_reuses_a_32_byte_key() -> None:
 
 
 def test_existing_key_is_reused_without_reprovisioning() -> None:
-    backend = _MemoryBackend(
-        passwords={(SERVICE, USERNAME): base64.b64encode(KEY).decode("ascii")}
-    )
+    backend = _MemoryBackend(passwords={(SERVICE, USERNAME): base64.b64encode(KEY).decode("ascii")})
     provider = _provider(backend)
 
     assert provider.get_key() == KEY
@@ -170,9 +168,7 @@ def test_generated_key_type_and_length_are_validated(
 
 
 def test_destroy_removes_only_the_keyring_reference_and_is_idempotent() -> None:
-    backend = _MemoryBackend(
-        passwords={(SERVICE, USERNAME): base64.b64encode(KEY).decode("ascii")}
-    )
+    backend = _MemoryBackend(passwords={(SERVICE, USERNAME): base64.b64encode(KEY).decode("ascii")})
     provider = _provider(backend)
 
     assert provider.destroy_key() is True

@@ -7,12 +7,21 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 _MASK = "[REDACTED]"
-_KEY_RE = re.compile(r"(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|refresh[_-]?token|authorization|cookie|email|phone|mobile|name|address|resume|profile[_-]?value)", re.IGNORECASE)
+_KEY_RE = re.compile(
+    r"(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|refresh[_-]?token|authorization|cookie|email|phone|mobile|name|address|resume|profile[_-]?value)",
+    re.IGNORECASE,
+)
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
-_ASSIGNMENT_RE = re.compile(r"\b(?:token|secret|password|passwd|api[_-]?key|access[_-]?key)\s*=\s*[^\s,;]+", re.IGNORECASE)
-_TOKEN_RE = re.compile(r"\b(?:sk|pk|ghp|github_pat|token|key)[_-][A-Za-z0-9._~-]{6,}\b", re.IGNORECASE)
-_ABS_PATH_RE = re.compile(r"(?:(?:[A-Za-z]:[\\/])|(?:/Users/)|(?:/home/)|(?:/var/)|(?:\\\\))[^\s,;]+")
+_ASSIGNMENT_RE = re.compile(
+    r"\b(?:token|secret|password|passwd|api[_-]?key|access[_-]?key)\s*=\s*[^\s,;]+", re.IGNORECASE
+)
+_TOKEN_RE = re.compile(
+    r"\b(?:sk|pk|ghp|github_pat|token|key)[_-][A-Za-z0-9._~-]{6,}\b", re.IGNORECASE
+)
+_ABS_PATH_RE = re.compile(
+    r"(?:(?:[A-Za-z]:[\\/])|(?:/Users/)|(?:/home/)|(?:/var/)|(?:\\\\))[^\s,;]+"
+)
 _PHONE_RE = re.compile(r"(?<!\w)(?:\+?\d[\d ()-]{7,}\d)(?!\w)")
 
 
@@ -42,8 +51,9 @@ def redact_details(value: Any) -> Any:
     if value is None or isinstance(value, (bool, int, float)):
         return value
 
-
     raise TypeError(f"details contain non-JSON value: {type(value).__name__}")
+
+
 _SAFE_OPERATION_KEYS = frozenset(
     {
         "operation",

@@ -90,4 +90,3 @@ def test_allowed_values_are_applied_to_enum_and_multivalue() -> None:
         validate_value(FieldType.ENUM, "gamma", rule=rule)
     with pytest.raises(InvalidFieldValueError):
         validate_value(FieldType.MULTIVALUE, ["alpha", "gamma"], rule=rule)
-
