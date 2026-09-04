@@ -1,8 +1,9 @@
 # F001 Contract Mapping: Profile Lifecycle
 
-**Status**: Implemented — corrective review in progress
+**Status**: Done
 **Authority**: `packages/contracts/v0.1/contracts.schema.json` remains the only normative schema.
 **Upstream baseline**: shared-contracts PR #1, merged into `main` as `23b9d2b`.
+**Implementation review**: F001 PR #2 and corrective PR #3 are merged; corrective merge commit is `c151e0a`.
 
 This document maps F001 domain operations to the shared contract. It is an implementation guide,
 not a second schema: fields, enum values and validation rules must be read from
