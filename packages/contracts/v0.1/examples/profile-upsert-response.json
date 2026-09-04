@@ -7,6 +7,11 @@
   "profile_id": "profile-main",
   "profile_version": 1,
   "written_field_ids": ["person.full_name"],
+  "written_record_ids": [],
+  "deleted_record_ids": [],
+  "written_custom_field_definition_ids": [],
+  "deleted_custom_field_definition_ids": [],
+  "record_order": [],
   "deleted_field_ids": [],
   "warnings": []
 }
