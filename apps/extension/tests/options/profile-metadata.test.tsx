@@ -93,4 +93,27 @@ describe("ProfilePage standard fields and metadata", () => {
     expect(screen.getByText(/使用范围.*全部资料/)).toBeInTheDocument();
     expect(screen.getByText(/更新时间.*2099-01-01/)).toBeInTheDocument();
   });
+
+  it("does not save an edited sensitive field without a second confirmation", async () => {
+    const sensitiveSnapshot: ProfileSnapshot = {
+      ...populated,
+      fields: [{
+        ...populated.fields[0],
+        sensitivity: "highly_sensitive",
+        requires_confirmation: true,
+      }],
+    };
+    const client = clientFor(sensitiveSnapshot);
+    const confirmation = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ProfilePage client={client} profileId={profileId} />);
+
+    const input = await screen.findByLabelText("姓名");
+    fireEvent.change(input, { target: { value: "Changed Sensitive Person" } });
+    fireEvent.click(screen.getByRole("button", { name: /^保存$/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/取消敏感字段保存/);
+    expect(client.upsert).not.toHaveBeenCalled();
+    expect(confirmation).toHaveBeenCalled();
+    confirmation.mockRestore();
+  });
 });

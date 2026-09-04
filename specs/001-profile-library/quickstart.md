@@ -11,8 +11,14 @@
 
 ## Start the local service
 
-从 apps/local-agent 安装开发依赖并启动本机服务。服务只监听 loopback；实际启动命令由
-pyproject.toml 和 README 在实现任务中固定。
+从 apps/local-agent 安装开发依赖并启动本机服务。服务只监听 loopback：
+
+```powershell
+.venv\Scripts\python -m resume_agent.main
+```
+
+默认地址为 `http://127.0.0.1:8765`；打包扩展的精确 origin 通过
+`RESUME_AGENT_ALLOWED_ORIGINS` 配置，不能使用通配符。
 
 确认启动检查满足：
 
@@ -61,7 +67,6 @@ contracts/profile-lifecycle.md。
 
 - Python 单元、集成和契约测试；
 - Options Page 交互测试；
-- F001 专用端到端测试；
 - JSON Schema 校验、脱敏/秘密扫描和网络出站拦截测试。
 
 完成条件是所有测试通过，且每个 spec.md 功能需求至少有一个自动化场景或明确的
@@ -74,15 +79,15 @@ Scenario B（重复经历与自定义字段）由记录隔离、字段约束、�
 Scenario C（隐私、导出与删除）由生命周期、恢复、隐私边界和导出/删除 UI 测试覆盖。
 这些场景均使用合成资料，不连接招聘网站、远程模型或云端账户。
 
-本次检查结果：
+本次检查结果（Windows，2026-09-04）：
 
-- 本地 Agent：`python -m pytest -q` → **181 passed, 2 warnings**；
-- 扩展：`pnpm test -- --run` → **8 files passed, 21 tests passed**；
-- 扩展类型检查：`pnpm typecheck` → **passed**；
-- 扩展 Lint：`pnpm lint` → **passed**；
-- 扩展构建：`pnpm build` → **passed**；
-- 共享契约与隐私审计：`pytest -q tests/contracts tests/security` → **57 passed**；
-- Python 静态检查：Ruff check → **All checks passed**；Ruff format check → **54 files already formatted**；
+- 本地 Agent：`apps/local-agent/.venv/Scripts/python -m pytest -q apps/local-agent/tests` → **235 passed, 2 warnings**；
+- 扩展：`npm test -- --run` → **9 files passed, 33 tests passed**；
+- 扩展类型检查：`npm run typecheck` → **passed**；
+- 扩展 Lint：`npm run lint` → **passed**；
+- 扩展构建：`npm run build` → **passed**；
+- 共享契约与隐私审计：`pytest -q tests/contracts tests/security` → **58 passed**；
+- Python 静态检查：Ruff check `apps/local-agent/src apps/local-agent/tests` → **All checks passed**；Ruff format check → **passed**；
 - Python 类型检查：mypy → **Success: no issues found in 20 source files**；
 - 性能夹具：500 字段值、100 条重复经历读取测试 → **1 passed**。
 

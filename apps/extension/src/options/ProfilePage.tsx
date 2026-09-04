@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 
-import { profileFieldKey } from "./profileClient";
+import { profileFieldKey, ProfileClientError, ProfileRefreshError } from "./profileClient";
 import type {
   ProfileDeleteSelection,
   ProfileExportSelection,
@@ -8,6 +8,7 @@ import type {
   ProfileField,
   ProfileRecord,
   ProfileSnapshot,
+  FieldType,
   RecordType,
 } from "./profileClient";
 import { RecordEditor2 as RecordEditor } from "./components/RecordEditor2";
@@ -24,6 +25,28 @@ interface ProfilePageProps {
 type CustomFieldType = "text" | "date" | "number" | "boolean" | "enum" | "multivalue";
 type CustomScope = "global" | "website" | "application";
 type CustomSensitivity = "normal" | "sensitive" | "highly_sensitive";
+type MutationIdentity = { request_id: string; task_id: string };
+
+type RetryAction =
+  | { kind: "read" }
+  | { kind: "save"; identity: MutationIdentity }
+  | { kind: "record"; identity: MutationIdentity }
+  | { kind: "move"; index: number; direction: -1 | 1; identity: MutationIdentity }
+  | { kind: "delete-record"; recordId: string; identity: MutationIdentity }
+  | { kind: "standard"; identity: MutationIdentity }
+  | { kind: "custom"; identity: MutationIdentity }
+  | { kind: "export"; path: string; selection: ProfileExportSelection; identity: MutationIdentity }
+  | { kind: "delete"; selection: ProfileDeleteSelection; identity: MutationIdentity };
+
+function newMutationIdentity(operation: string): MutationIdentity {
+  const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return {
+    request_id: `extension-ui-${operation}-${suffix}`,
+    task_id: `extension-ui-task-${operation}-${suffix}`,
+  };
+}
 
 function customFieldId(label: string): string {
   const slug = label.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -47,6 +70,10 @@ function parseStandardFieldValue(type: ProfileField["field_type"], value: string
     return Number.isFinite(parsed) ? parsed : value.trim();
   }
   if (type === "boolean") return value === "true";
+  if (type === "year") {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= 1000 && parsed <= 9999 ? parsed : value.trim();
+  }
   if (type === "multivalue") return value.split(",").map((item) => item.trim()).filter(Boolean);
   return value.trim();
 }
@@ -73,6 +100,105 @@ function editableValue(field: ProfileField, value: string): ProfileField["value"
     return values.length > 0 ? values : undefined;
   }
   return value;
+}
+
+function mutationRefreshFailed(error: unknown): boolean {
+  return error instanceof ProfileRefreshError
+    || (typeof error === "object" && error !== null && "mutationCommitted" in error
+      && (error as { mutationCommitted?: unknown }).mutationCommitted === true);
+}
+
+function clientFailureMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof ProfileClientError)) return fallback;
+  switch (error.code) {
+    case "STALE_PROFILE_VERSION":
+      return "资料版本已变化，请先重新读取后再操作";
+    case "CONFIRMATION_REQUIRED":
+      return "需要明确确认后才能保存或执行此操作";
+    case "INVALID_FIELD_VALUE":
+      return "字段值不符合要求，请修改后重试";
+    case "CUSTOM_FIELD_CONFLICT":
+      return "自定义字段名称或定义冲突，请修改后重试";
+    case "INVALID_PROFILE_SELECTION":
+      return "所选资料已变化，请重新打开并选择范围";
+    case "STORAGE_UNAVAILABLE":
+    case "STORAGE_CORRUPT_OR_UNRECOVERABLE":
+      return "本地资料暂不可用，请重试或按提示手动恢复";
+    default:
+      return fallback;
+  }
+}
+
+function retryForFailure(error: unknown, action: RetryAction): RetryAction | null {
+  if (error instanceof ProfileClientError) {
+    if (error.code === "STALE_PROFILE_VERSION") return { kind: "read" };
+    if (!error.retryable && !["STORAGE_UNAVAILABLE", "STORAGE_CORRUPT_OR_UNRECOVERABLE"].includes(error.code ?? "")) {
+      return null;
+    }
+  }
+  return action;
+}
+
+function fieldControl(
+  field: ProfileField,
+  value: string,
+  controlId: string,
+  onChange: (value: string) => void,
+) {
+  const common = {
+    id: controlId,
+    "aria-label": field.label,
+    value,
+    onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      onChange(event.target.value),
+  };
+  if (field.field_type === "boolean") {
+    return (
+      <select {...common}>
+        <option value="">请选择</option>
+        <option value="true">是</option>
+        <option value="false">否</option>
+      </select>
+    );
+  }
+  if (field.field_type === "year") {
+    return <input {...common} type="number" />;
+  }
+  if (field.field_type === "enum") {
+    return (
+      <select {...common}>
+        <option value="">请选择</option>
+        {(field.options ?? []).map((option) => (
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (field.field_type === "rich_text" || field.field_type === "object") {
+    return <textarea {...common} rows={4} />;
+  }
+  const inputType: Record<FieldType, string> = {
+    text: "text",
+    email: "email",
+    phone: "tel",
+    date: "date",
+    year: "number",
+    number: "number",
+    boolean: "text",
+    enum: "text",
+    multivalue: "text",
+    rich_text: "text",
+    object: "text",
+  };
+  return <input {...common} type={inputType[field.field_type]} />;
+}
+
+function requiresExplicitConfirmation(fields: ProfileField[]): boolean {
+  return fields.some(
+    (field) => field.requires_confirmation || field.sensitivity !== "normal",
+  );
 }
 
 function recordLabel(type: RecordType): string {
@@ -126,6 +252,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
   const [standardFieldOpen, setStandardFieldOpen] = useState(false);
   const [standardFieldId, setStandardFieldId] = useState("");
   const [standardFieldValue, setStandardFieldValue] = useState("");
+  const [standardFieldScope, setStandardFieldScope] = useState<CustomScope>("global");
   const [standardFieldScopeContext, setStandardFieldScopeContext] = useState("");
   const [customFieldLabel, setCustomFieldLabel] = useState("");
   const [customFieldType, setCustomFieldType] = useState<CustomFieldType>("text");
@@ -134,15 +261,25 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
   const [customFieldScope, setCustomFieldScope] = useState<CustomScope>("global");
   const [customFieldScopeContext, setCustomFieldScopeContext] = useState("");
   const [customFieldSensitivity, setCustomFieldSensitivity] = useState<CustomSensitivity>("normal");
+  const [editingCustomFieldId, setEditingCustomFieldId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lifecycleAction, setLifecycleAction] = useState<"export" | "delete" | null>(null);
+  const [readAttempt, setReadAttempt] = useState(0);
+  const [retryAction, setRetryAction] = useState<RetryAction | null>(null);
+
+  const retryRead = () => {
+    setError(null);
+    setRetryAction(null);
+    setReadAttempt((attempt) => attempt + 1);
+  };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
     client
       .read(profileId)
       .then((loaded) => {
@@ -150,22 +287,30 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
         setSnapshot(loaded);
         setRecords(loaded.records);
         setDraft(Object.fromEntries(loaded.fields.map((field) => [profileFieldKey(field), displayValue(field.value)])));
+        setRetryAction(null);
       })
-      .catch(() => active && setError("资料读取失败，请检查本地服务"))
+      .catch(() => {
+        if (!active) return;
+        setError("资料读取失败，请检查本地服务");
+        setRetryAction({ kind: "read" });
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [client, profileId]);
+  }, [client, profileId, readAttempt]);
 
   if (loading && !snapshot) return <>
     <p role="status">正在加载资料…</p>
     <button type="button" onClick={() => setCustomFieldOpen(true)}>新增自定义字段</button>
   </>;
-  if (error && !snapshot) return <p role="alert">{error}</p>;
+  if (error && !snapshot) return <>
+    <p role="alert">{error}</p>
+    <button type="button" onClick={retryRead}>重试读取</button>
+  </>;
   if (!snapshot) return <p role="alert">资料不可用</p>;
 
-  const save = async () => {
+  const save = async (identity = newMutationIdentity("upsert")) => {
     const preparedFields: ProfileField[] = [];
     for (const field of snapshot.fields) {
       const raw = draft[profileFieldKey(field)] ?? "";
@@ -182,10 +327,22 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       }
       preparedFields.push({ ...field, value });
     }
+    if (requiresExplicitConfirmation(preparedFields)) {
+      const labels = preparedFields
+        .filter((field) => field.requires_confirmation || field.sensitivity !== "normal")
+        .map((field) => field.label)
+        .join("、");
+      if (!window.confirm(`以下字段属于敏感资料，确认保存：${labels}？`)) {
+        setError("已取消敏感字段保存");
+        setMessage(null);
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -195,15 +352,22 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setSnapshot(updated);
       setRecords(updated.records);
       setDraft(Object.fromEntries(updated.fields.map((field) => [profileFieldKey(field), displayValue(field.value)])));
+      setRetryAction(null);
       setMessage("资料已保存");
-    } catch {
-      setError("资料保存失败，请检查本地服务");
+    } catch (cause) {
+      if (mutationRefreshFailed(cause)) {
+        setError("资料已保存，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setError(clientFailureMessage(cause, "资料保存失败，请检查本地服务"));
+        setRetryAction(retryForFailure(cause, { kind: "save", identity }));
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const saveRecord = async () => {
+  const saveRecord = async (identity = newMutationIdentity("upsert")) => {
     if (!editingRecordId) return;
     const record = records.find((item) => item.record_id === editingRecordId);
     if (!record) return;
@@ -211,10 +375,17 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setError("经历至少需要填写一个字段");
       return;
     }
+    if (requiresExplicitConfirmation(record.fields)) {
+      if (!window.confirm("这条经历包含敏感资料，确认保存吗？")) {
+        setError("已取消敏感经历保存");
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -225,9 +396,16 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setSnapshot(updated);
       setRecords(updated.records);
       setEditingRecordId(null);
+      setRetryAction(null);
       setMessage("经历已保存");
-    } catch {
-      setError("经历保存失败，请检查本地服务");
+    } catch (cause) {
+      if (mutationRefreshFailed(cause)) {
+        setError("经历已保存，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setError(clientFailureMessage(cause, "经历保存失败，请检查本地服务"));
+        setRetryAction(retryForFailure(cause, { kind: "record", identity }));
+      }
     } finally {
       setSaving(false);
     }
@@ -261,7 +439,40 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     }));
   };
 
-  const moveRecord = async (index: number, direction: -1 | 1) => {
+  const addRecordField = (recordId: string, definitionId: string) => {
+    const definition = snapshot.field_definitions.find((item) => item.id === definitionId);
+    if (!definition || !definition.allowed_scopes.includes("global")) return;
+    setRecords((current) => current.map((record) => {
+      if (record.record_id !== recordId || record.fields.some((field) => field.id === definitionId)) {
+        return record;
+      }
+      const now = new Date().toISOString();
+      const emptyValue: ProfileField["value"] = definition.field_type === "multivalue" ? [] : "";
+      const field: ProfileField = {
+        id: definition.id,
+        label: definition.label,
+        field_type: definition.field_type,
+        value: emptyValue,
+        scope: "global",
+        sensitivity: definition.default_sensitivity,
+        requires_confirmation: definition.requires_confirmation,
+        confirmed: true,
+        source: { kind: "manual" },
+        updated_at: now,
+        is_custom: definition.is_custom,
+        aliases: definition.aliases,
+        options: definition.options,
+        validation: definition.validation,
+      };
+      return { ...record, fields: [...record.fields, field], updated_at: now };
+    }));
+  };
+
+  const moveRecord = async (
+    index: number,
+    direction: -1 | 1,
+    identity = newMutationIdentity("upsert"),
+  ) => {
     const target = index + direction;
     if (target < 0 || target >= records.length) return;
     const previous = records;
@@ -273,6 +484,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     setError(null);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -282,19 +494,37 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       });
       setSnapshot(updated);
       setRecords(updated.records);
-    } catch {
+      setRetryAction(null);
+    } catch (cause) {
       setRecords(previous);
-      setError("经历排序失败，请检查本地服务");
+      if (mutationRefreshFailed(cause)) {
+        setError("排序已保存，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setError(clientFailureMessage(cause, "经历排序失败，请检查本地服务"));
+        setRetryAction(retryForFailure(cause, { kind: "move", index, direction, identity }));
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteRecord = async (recordId: string) => {
+  const deleteRecord = async (
+    recordId: string,
+    identity = newMutationIdentity("upsert"),
+  ) => {
     if (!window.confirm("确认删除这条经历吗？")) return;
+    if (!snapshot.records.some((record) => record.record_id === recordId)) {
+      setRecords((current) => current.filter((record) => record.record_id !== recordId));
+      setEditingRecordId(null);
+      setMessage("已取消新增经历");
+      setError(null);
+      return;
+    }
     setSaving(true);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -304,24 +534,40 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       });
       setSnapshot(updated);
       setRecords(updated.records);
+      setRetryAction(null);
       setMessage("经历已删除");
-    } catch {
-      setError("经历删除失败，请检查本地服务");
+    } catch (cause) {
+      if (mutationRefreshFailed(cause)) {
+        setError("经历已删除，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setError(clientFailureMessage(cause, "经历删除失败，请检查本地服务"));
+        setRetryAction(retryForFailure(cause, { kind: "delete-record", recordId, identity }));
+      }
     } finally {
       setSaving(false);
     }
   };
 
   const availableStandardDefinitions = snapshot.field_definitions.filter((definition) =>
-    !definition.is_custom && !snapshot.fields.some((field) => field.id === definition.id),
+    !definition.is_custom && definition.allowed_scopes.some((scope) =>
+      scope !== "global" || !snapshot.fields.some((field) => field.id === definition.id && field.scope === "global"),
+    ),
   );
   const resetStandardFieldForm = () => {
     setStandardFieldOpen(false);
     setStandardFieldId("");
     setStandardFieldValue("");
+    setStandardFieldScope("global");
     setStandardFieldScopeContext("");
   };
-  const saveStandardField = async () => {
+  const selectStandardField = (fieldId: string) => {
+    setStandardFieldId(fieldId);
+    const definition = availableStandardDefinitions.find((item) => item.id === fieldId);
+    setStandardFieldScope((definition?.allowed_scopes[0] ?? "global") as CustomScope);
+    setStandardFieldScopeContext("");
+  };
+  const saveStandardField = async (identity = newMutationIdentity("upsert")) => {
     const definition = availableStandardDefinitions.find((item) => item.id === standardFieldId);
     if (!definition) {
       setError("请选择标准字段");
@@ -331,10 +577,21 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setError(`${definition.label}不能为空`);
       return;
     }
-    const scope = definition.allowed_scopes[0] ?? "global";
+    const scope = standardFieldScope;
+    if (!definition.allowed_scopes.includes(scope)) {
+      setError("所选字段不支持该使用范围");
+      return;
+    }
     if (scope !== "global" && !standardFieldScopeContext.trim()) {
       setError("网站或申请范围需要填写范围标识");
       return;
+    }
+    if (definition.requires_confirmation || definition.default_sensitivity !== "normal") {
+      if (!window.confirm(`字段“${definition.label}”属于敏感资料，确认保存吗？`)) {
+        setError("已取消敏感标准字段保存");
+        setRetryAction(null);
+        return;
+      }
     }
     const now = new Date().toISOString();
     const field: ProfileField = {
@@ -350,11 +607,18 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       source: { kind: "manual" },
       updated_at: now,
       ...(definition.options ? { options: definition.options } : {}),
+      ...(definition.aliases ? { aliases: definition.aliases } : {}),
+      ...(definition.validation ? { validation: definition.validation } : {}),
     };
+    if (definition.field_type === "year" && typeof field.value !== "number") {
+      setError(`${definition.label}格式不正确`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -365,9 +629,16 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setRecords(updated.records);
       setDraft(Object.fromEntries(updated.fields.map((item) => [profileFieldKey(item), displayValue(item.value)])));
       resetStandardFieldForm();
+      setRetryAction(null);
       setMessage("标准字段已保存");
-    } catch {
-      setError("标准字段保存失败，请检查本地服务");
+    } catch (cause) {
+      if (mutationRefreshFailed(cause)) {
+        setError("标准字段已保存，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setError(clientFailureMessage(cause, "标准字段保存失败，请检查本地服务"));
+        setRetryAction(retryForFailure(cause, { kind: "standard", identity }));
+      }
     } finally {
       setSaving(false);
     }
@@ -375,6 +646,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
 
   const resetCustomFieldForm = () => {
     setCustomFieldOpen(false);
+    setEditingCustomFieldId(null);
     setCustomFieldLabel("");
     setCustomFieldValue("");
     setCustomFieldOptions("");
@@ -384,7 +656,38 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     setCustomFieldSensitivity("normal");
   };
 
-  const saveCustomField = async () => {
+  const openCustomFieldEditor = (fieldId?: string, valueKey?: string) => {
+    if (!fieldId) {
+      resetCustomFieldForm();
+      setCustomFieldOpen(true);
+      return;
+    }
+    const definition = snapshot.field_definitions.find(
+      (item) => item.id === fieldId && item.is_custom,
+    );
+    if (!definition) return;
+    const field = valueKey
+      ? snapshot.fields.find((item) => profileFieldKey(item) === valueKey)
+      : snapshot.fields.find((item) => item.id === fieldId);
+    setEditingCustomFieldId(fieldId);
+    setCustomFieldLabel(definition.label);
+    setCustomFieldType(definition.field_type as CustomFieldType);
+    setCustomFieldValue(field ? displayValue(field.value) : "");
+    setCustomFieldOptions(
+      (definition.options ?? []).map((item) => String(item.value)).join(","),
+    );
+    setCustomFieldScope(
+      (field?.scope ?? definition.allowed_scopes[0] ?? "global") as CustomScope,
+    );
+    setCustomFieldScopeContext(field?.scope_context ?? "");
+    setCustomFieldSensitivity(
+      (field?.sensitivity ?? definition.default_sensitivity) as CustomSensitivity,
+    );
+    setError(null);
+    setCustomFieldOpen(true);
+  };
+
+  const saveCustomField = async (identity = newMutationIdentity("upsert")) => {
     const label = customFieldLabel.trim();
     if (!label) {
       setError("字段名称不能为空");
@@ -400,7 +703,14 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       return;
     }
     if (!customFieldValue.trim() && customFieldType !== "boolean") {
-      setError("字段值不能为空");
+      setError(editingCustomFieldId ? "字段值不能为空；如需删除请使用删除资料" : "字段值不能为空");
+      return;
+    }
+    if (
+      customFieldType === "boolean"
+      && !["true", "false"].includes(customFieldValue)
+    ) {
+      setError("布尔字段必须明确选择是或否");
       return;
     }
     if (customFieldScope !== "global" && !customFieldScopeContext.trim()) {
@@ -420,9 +730,16 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setError("数字字段格式不正确");
       return;
     }
-    const id = customFieldId(label);
+    const id = editingCustomFieldId ?? customFieldId(label);
+    const existingDefinition = editingCustomFieldId
+      ? snapshot.field_definitions.find(
+        (item) => item.id === editingCustomFieldId && item.is_custom,
+      )
+      : undefined;
     const now = new Date().toISOString();
-    const options = optionValues.map((item) => ({ value: item, label: item }));
+    const options = (customFieldType === "enum" || customFieldType === "multivalue")
+      ? optionValues.map((item) => ({ value: item, label: item }))
+      : undefined;
     const definition = {
       id,
       label,
@@ -430,9 +747,18 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       default_sensitivity: customFieldSensitivity,
       requires_confirmation: true,
       is_custom: true as const,
-      allowed_scopes: [customFieldScope],
-      ...(options.length > 0 ? { options } : {}),
-      created_at: now,
+      // Editing a value must not silently narrow a definition that already
+      // supports other scopes. A newly selected scope may be added explicitly.
+      allowed_scopes: Array.from(new Set([
+        ...(existingDefinition?.allowed_scopes ?? []),
+        customFieldScope,
+      ])),
+      ...(options && options.length > 0 ? { options } : {}),
+      ...(existingDefinition?.aliases ? { aliases: existingDefinition.aliases } : {}),
+      ...(existingDefinition?.validation ? { validation: existingDefinition.validation } : {}),
+      ...(existingDefinition?.created_at
+        ? { created_at: existingDefinition.created_at }
+        : { created_at: now }),
       updated_at: now,
     };
     const field: ProfileField = {
@@ -448,12 +774,13 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       source: { kind: "manual" },
       updated_at: now,
       is_custom: true,
-      ...(options.length > 0 ? { options } : {}),
+      ...(options && options.length > 0 ? { options } : {}),
     };
     setSaving(true);
     setError(null);
     try {
       const updated = await client.upsert({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -465,9 +792,20 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       setRecords(updated.records);
       setDraft(Object.fromEntries(updated.fields.map((item) => [profileFieldKey(item), displayValue(item.value)])));
       resetCustomFieldForm();
-      setMessage("自定义字段已保存");
-    } catch {
-      setError("自定义字段保存失败，请检查名称或选项");
+      setRetryAction(null);
+      setMessage(editingCustomFieldId ? "自定义字段定义已更新" : "自定义字段已保存");
+    } catch (cause) {
+      setError(
+        editingCustomFieldId
+          ? "自定义字段定义更新失败，请检查名称、类型或已有值"
+          : "自定义字段保存失败，请检查名称或选项",
+      );
+      if (mutationRefreshFailed(cause)) {
+        setError("自定义字段已保存，但刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+      } else {
+        setRetryAction(retryForFailure(cause, { kind: "custom", identity }));
+      }
     } finally {
       setSaving(false);
     }
@@ -477,7 +815,11 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     setError(null);
     setMessage("已取消未保存的修改");
   };
-  const exportProfile = async (path: string, selection: ProfileExportSelection) => {
+  const exportProfile = async (
+    path: string,
+    selection: ProfileExportSelection,
+    identity = newMutationIdentity("export"),
+  ) => {
     if (!client.export) {
       setError("当前客户端不支持导出");
       return;
@@ -486,6 +828,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     setError(null);
     try {
       const result = await client.export({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
@@ -498,15 +841,20 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
         },
       });
       setLifecycleAction(null);
+      setRetryAction(null);
       setMessage(`资料已导出：${result.destination_display_name}`);
-    } catch {
-      setError("导出失败，请检查文件路径或本地服务");
+    } catch (cause) {
+      setError(clientFailureMessage(cause, "导出失败，请检查文件路径或本地服务"));
+      setRetryAction(retryForFailure(cause, { kind: "export", path, selection, identity }));
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteProfile = async (selection: ProfileDeleteSelection) => {
+  const deleteProfile = async (
+    selection: ProfileDeleteSelection,
+    identity = newMutationIdentity("delete"),
+  ) => {
     if (!client.delete) {
       setError("当前客户端不支持删除");
       return;
@@ -515,21 +863,64 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     setError(null);
     try {
       const result = await client.delete({
+        ...identity,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
         user_confirmed: true,
         selection,
       });
-      const refreshed = await client.read(profileId);
+      let refreshed: ProfileSnapshot;
+      try {
+        refreshed = await client.read(profileId);
+      } catch {
+        setError("删除已执行，但资料刷新失败，请重试读取");
+        setRetryAction({ kind: "read" });
+        return;
+      }
       setSnapshot(refreshed);
       setRecords(refreshed.records);
       setDraft(Object.fromEntries(refreshed.fields.map((field) => [profileFieldKey(field), displayValue(field.value)])));
+      const pending = result.cleanup_pending ?? [];
+      if (result.task_state === "partial" || pending.length > 0) {
+        const warning = result.warnings?.find((item) => item.message)?.message;
+        setError(
+          `删除未完全完成${pending.length > 0 ? `（待处理：${pending.join("、")}）` : ""}。${warning ?? "请重试或手动处理。"}`,
+        );
+        setMessage(null);
+        return;
+      }
       setLifecycleAction(null);
+      setRetryAction(null);
       setMessage(result.all_data_deleted ? "资料已全部删除" : "所选资料已删除");
-    } catch {
-      setError("删除失败，请检查本地服务");
+    } catch (cause) {
+      setError(clientFailureMessage(cause, "删除失败，请检查本地服务"));
+      setRetryAction(retryForFailure(cause, { kind: "delete", selection, identity }));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const runRetry = () => {
+    const action = retryAction;
+    if (!action) return;
+    if (action.kind === "read") {
+      retryRead();
+    } else if (action.kind === "save") {
+      void save(action.identity);
+    } else if (action.kind === "record") {
+      void saveRecord(action.identity);
+    } else if (action.kind === "move") {
+      void moveRecord(action.index, action.direction, action.identity);
+    } else if (action.kind === "delete-record") {
+      void deleteRecord(action.recordId, action.identity);
+    } else if (action.kind === "standard") {
+      void saveStandardField(action.identity);
+    } else if (action.kind === "custom") {
+      void saveCustomField(action.identity);
+    } else if (action.kind === "export") {
+      void exportProfile(action.path, action.selection, action.identity);
+    } else {
+      void deleteProfile(action.selection, action.identity);
     }
   };
 
@@ -543,11 +934,13 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
           definitions={availableStandardDefinitions}
           fieldId={standardFieldId}
           value={standardFieldValue}
+          scope={standardFieldScope}
           scopeContext={standardFieldScopeContext}
           saving={saving}
           error={error}
-          onFieldIdChange={setStandardFieldId}
+          onFieldIdChange={selectStandardField}
           onValueChange={setStandardFieldValue}
+          onScopeChange={setStandardFieldScope}
           onScopeContextChange={setStandardFieldScopeContext}
           onSave={saveStandardField}
           onCancel={resetStandardFieldForm}
@@ -565,17 +958,21 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
         return (
           <div key={fieldKey}>
             <label htmlFor={controlId}>{field.label}</label>
-            <input
-              id={controlId}
-              type={field.field_type === "email" ? "email" : "text"}
-              value={draft[fieldKey] ?? ""}
-              onChange={(event) => setDraft((current) => ({ ...current, [fieldKey]: event.target.value }))}
-            />
+            {fieldControl(
+              field,
+              draft[fieldKey] ?? "",
+              controlId,
+              (value) => setDraft((current) => ({ ...current, [fieldKey]: value })),
+            )}
             <p>来源：{field.source.kind === "manual" ? "手动" : field.source.kind}</p>
             <p>确认状态：{field.confirmed ? "已确认" : "未确认"}</p>
             <p>敏感级别：{field.sensitivity === "normal" ? "普通" : field.sensitivity === "sensitive" ? "敏感" : "高度敏感"}</p>
             <p>使用范围：{field.scope === "global" ? "全部资料" : field.scope === "website" ? `指定网站（${field.scope_context ?? ""}）` : `指定申请（${field.scope_context ?? ""}）`}</p>
             <p>更新时间：{field.updated_at}</p>
+            <p>字段类型：{field.field_type}{field.is_custom ? "（自定义）" : "（标准）"}</p>
+            {field.is_custom ? (
+               <button type="button" onClick={() => openCustomFieldEditor(field.id, fieldKey)}>编辑定义</button>
+            ) : null}
           </div>
         );
       })}
@@ -592,6 +989,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
             record={record}
             index={index}
             total={records.length}
+            definitions={snapshot.field_definitions}
             editing={editingRecordId === record.record_id}
             saving={saving}
             labelForType={recordLabel}
@@ -599,6 +997,7 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
             displayValue={displayValue}
             onEdit={editRecord}
             onChange={updateRecordField}
+            onAddField={addRecordField}
             onMove={moveRecord}
             onDelete={deleteRecord}
             onSave={saveRecord}
@@ -608,11 +1007,14 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
       </section>
 
       <div>
-        <button type="button" onClick={() => { setError(null); setLifecycleAction("export"); }} disabled={saving}>导出资料</button>
-        <button type="button" onClick={() => { setError(null); setLifecycleAction("delete"); }} disabled={saving}>删除资料</button>
+        <button type="button" onClick={() => { setError(null); setRetryAction(null); setLifecycleAction("export"); }} disabled={saving}>导出资料</button>
+        <button type="button" onClick={() => { setError(null); setRetryAction(null); setLifecycleAction("delete"); }} disabled={saving}>删除资料</button>
       </div>
       {customFieldOpen ? (
         <CustomFieldEditor
+          title={editingCustomFieldId ? "编辑自定义字段定义" : "新增自定义字段"}
+          submitLabel={editingCustomFieldId ? "确认更新" : "确认添加"}
+          valueRequired
           label={customFieldLabel}
           type={customFieldType}
           value={customFieldValue}
@@ -634,20 +1036,27 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
         />
       ) : <>
         <button type="button" onClick={() => setCustomFieldOpen(true)}>新增自定义字段</button>
-        {error && !lifecycleAction ? <p role="alert">{error}</p> : null}
+        {error && !lifecycleAction && !standardFieldOpen ? <p role="alert">{error}</p> : null}
         {message ? <p role="status">{message}</p> : null}
-        <button type="button" onClick={save} disabled={saving}>{saving ? "保存中…" : "保存"}</button>
+        <button type="button" onClick={() => void save()} disabled={saving}>{saving ? "保存中…" : "保存"}</button>
         <button type="button" onClick={cancel} disabled={saving}>取消</button>
       </>}
       <ProfileLifecycleDialogs
         action={lifecycleAction}
         fields={snapshot.fields}
+        records={snapshot.records}
+        definitions={snapshot.field_definitions}
         saving={saving}
         error={error}
         onClose={() => { setLifecycleAction(null); setError(null); }}
         onExport={exportProfile}
         onDelete={deleteProfile}
       />
+      {error && retryAction ? (
+        <button type="button" onClick={runRetry} disabled={saving}>
+          {retryAction.kind === "read" ? "重试读取" : "重试"}
+        </button>
+      ) : null}
     </main>
   );
 }

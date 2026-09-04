@@ -106,8 +106,9 @@ describe("ProfilePage lifecycle controls", () => {
     expect(client.delete).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "删除资料" }));
+    const fieldOption = screen.getByRole("option", { name: /字段：姓名/ }) as HTMLOptionElement;
     fireEvent.change(screen.getByRole("combobox", { name: "删除范围" }), {
-      target: { value: "field:person.full_name" },
+      target: { value: fieldOption.value },
     });
     fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
     await waitFor(() => expect(client.delete).toHaveBeenCalledTimes(1));
@@ -115,7 +116,7 @@ describe("ProfilePage lifecycle controls", () => {
       profile_id: profileId,
       expected_profile_version: 3,
       user_confirmed: true,
-      selection: { field_ids: ["person.full_name"] },
+      selection: { field_values: [{ id: "person.full_name", scope: "global" }] },
     });
   });
 

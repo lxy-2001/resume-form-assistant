@@ -13,7 +13,16 @@ python -m venv .venv
 .venv\Scripts\python -m pytest -q
 ```
 
-F001 的本地服务通过注入 `ProfileService` 的测试和契约边界验证；可运行的生产启动入口属于后续服务集成任务。
+启动本地服务（已安装依赖后）：
+
+```powershell
+.venv\Scripts\python -m resume_agent.main
+```
+
+默认只监听 `http://127.0.0.1:8765`。开发扩展来源可使用内置的 Vite 来源；如果使用已打包
+的 Chrome/Edge 扩展，必须通过 `RESUME_AGENT_ALLOWED_ORIGINS` 配置精确的
+`chrome-extension://<extension-id>` 或 `edge-extension://<extension-id>` 来源。配置项以逗号
+分隔，不允许通配符或首尾空格；服务不会因为配置错误而放宽来源限制。
 
 ## 数据安全与恢复边界
 

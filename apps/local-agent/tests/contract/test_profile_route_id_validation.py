@@ -41,9 +41,15 @@ def _body(**changes: Any) -> dict[str, Any]:
         "fields": [
             {
                 "id": "person.full_name",
+                "label": "姓名",
+                "field_type": "text",
                 "value": "Synthetic User",
+                "scope": "global",
+                "sensitivity": "normal",
+                "requires_confirmation": False,
                 "confirmed": True,
                 "source": {"kind": "manual"},
+                "updated_at": "2099-01-01T00:00:00Z",
             }
         ],
     }
@@ -158,7 +164,24 @@ def test_route_accepts_boundary_length_and_allowed_id_characters(
     client = _client(tmp_path, fake_profile_store)
     response = client.post(
         "/v0/profile/upsert",
-        json=_body(request_id=boundary_id, task_id=boundary_id),
+        json=_body(
+            request_id=boundary_id,
+            task_id=boundary_id,
+            fields=[
+                {
+                    "id": "person.full_name",
+                    "label": "姓名",
+                    "field_type": "text",
+                    "value": "Synthetic User",
+                    "scope": "global",
+                    "sensitivity": "normal",
+                    "requires_confirmation": False,
+                    "confirmed": True,
+                    "source": {"kind": "manual"},
+                    "updated_at": "2099-01-01T00:00:00Z",
+                }
+            ],
+        ),
     )
 
     assert response.status_code == 200

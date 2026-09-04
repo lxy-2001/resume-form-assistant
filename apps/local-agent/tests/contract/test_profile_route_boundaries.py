@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from resume_agent.api.app import create_app
@@ -31,7 +32,20 @@ def _body(**changes: Any) -> dict[str, Any]:
         "expected_profile_version": 0,
         "user_confirmed": True,
         "mode": "merge",
-        "fields": [],
+        "fields": [
+            {
+                "id": "person.full_name",
+                "label": "姓名",
+                "field_type": "text",
+                "value": "Synthetic User",
+                "scope": "global",
+                "sensitivity": "normal",
+                "requires_confirmation": False,
+                "confirmed": True,
+                "source": {"kind": "manual"},
+                "updated_at": "2099-01-01T00:00:00Z",
+            }
+        ],
     }
     result.update(changes)
     return result
@@ -44,6 +58,137 @@ def test_upsert_rejects_non_mapping_mutation_members_without_500(
     response = _client(tmp_path, fake_profile_store).post(
         "/v0/profile/upsert", json=_body(records=["not-a-record"])
     )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_FIELD_VALUE"
+    assert fake_profile_store.write_calls == 0
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"records": []},
+        {"custom_field_definitions": []},
+        {"delete_record_ids": []},
+        {"delete_custom_field_definition_ids": []},
+        {
+            "fields": [
+                {
+                    "id": "person.full_name",
+                    "label": "姓名",
+                    "field_type": "text",
+                    "value": "Synthetic User",
+                    "scope": "global",
+                    "scope_context": None,
+                    "sensitivity": "normal",
+                    "requires_confirmation": False,
+                    "confirmed": True,
+                    "source": {"kind": "manual"},
+                    "updated_at": "2099-01-01T00:00:00Z",
+                }
+            ]
+        },
+    ],
+)
+def test_upsert_rejects_shapes_that_the_master_schema_rejects(
+    tmp_path: Path,
+    fake_profile_store: ProfileStore,
+    changes: dict[str, Any],
+) -> None:
+    response = _client(tmp_path, fake_profile_store).post(
+        "/v0/profile/upsert", json=_body(**changes)
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_FIELD_VALUE"
+    assert fake_profile_store.write_calls == 0
+
+
+def test_upsert_rejects_non_boolean_option_flags_at_http_boundary(
+    tmp_path: Path,
+    fake_profile_store: ProfileStore,
+) -> None:
+    field = dict(_body()["fields"][0])
+    field["options"] = [{"value": "x", "label": "X", "selected": "false"}]
+
+    response = _client(tmp_path, fake_profile_store).post(
+        "/v0/profile/upsert", json=_body(fields=[field])
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_FIELD_VALUE"
+    assert fake_profile_store.write_calls == 0
+
+
+@pytest.mark.parametrize(
+    ("path", "changes"),
+    [
+        ("/v0/profile/upsert", {"operation": ["profile.upsert"]}),
+        (
+            "/v0/profile/upsert",
+            {
+                "fields": [
+                    {
+                        **_body()["fields"][0],
+                        "scope": ["global"],
+                    }
+                ]
+            },
+        ),
+        (
+            "/v0/profile/upsert",
+            {
+                "fields": [
+                    {
+                        **_body()["fields"][0],
+                        "source": {"kind": ["manual"]},
+                    }
+                ]
+            },
+        ),
+        (
+            "/v0/profile/upsert",
+            {
+                "fields": [
+                    {
+                        **_body()["fields"][0],
+                        "validation": {"format": ["email"]},
+                    }
+                ]
+            },
+        ),
+        (
+            "/v0/profile/export",
+            {
+                "operation": "profile.export",
+                "selection": {"scopes": [["global"]]},
+                "format": "json",
+                "destination": {
+                    "kind": "local_file",
+                    "path": "C:/synthetic-export.json",
+                    "overwrite_existing": False,
+                },
+            },
+        ),
+    ],
+)
+def test_malformed_unhashable_members_return_structured_client_errors(
+    tmp_path: Path,
+    fake_profile_store: ProfileStore,
+    path: str,
+    changes: dict[str, Any],
+) -> None:
+    body = _body(**changes)
+    if path.endswith("/export"):
+        body = {
+            **body,
+            "operation": "profile.export",
+            "expected_profile_version": 0,
+            "selection": changes["selection"],
+            "format": "json",
+            "destination": changes["destination"],
+        }
+    response = _client(tmp_path, fake_profile_store).post(path, json=body)
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_FIELD_VALUE"

@@ -509,6 +509,33 @@
         }
       ]
     },
+    "ProfileFieldSelector": {
+      "type": "object",
+      "description": "The identity of one stored field value, including its scope.",
+      "required": ["id", "scope"],
+      "properties": {
+        "id": {"$ref": "#/$defs/Id"},
+        "scope": {"$ref": "#/$defs/Scope"},
+        "scope_context": {"$ref": "#/$defs/Id"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"scope": {"enum": ["website", "application"]}},
+            "required": ["scope"]
+          },
+          "then": {"required": ["scope_context"]}
+        },
+        {
+          "if": {
+            "properties": {"scope": {"const": "global"}},
+            "required": ["scope"]
+          },
+          "then": {"not": {"required": ["scope_context"]}}
+        }
+      ]
+    },
     "ProfileDeleteSelection": {
       "type": "object",
       "properties": {
@@ -517,6 +544,13 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {"$ref": "#/$defs/Id"}
+        },
+        "field_values": {
+          "type": "array",
+          "description": "Precise field-value selectors. Use this when the same id exists in multiple scopes.",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ProfileFieldSelector"}
         },
         "record_ids": {
           "type": "array",
@@ -539,6 +573,7 @@
           "not": {
             "anyOf": [
               {"required": ["field_ids"]},
+              {"required": ["field_values"]},
               {"required": ["record_ids"]},
               {"required": ["custom_field_definition_ids"]}
             ]
@@ -548,6 +583,7 @@
           "not": {"required": ["delete_all"]},
           "anyOf": [
             {"required": ["field_ids"]},
+            {"required": ["field_values"]},
             {"required": ["record_ids"]},
             {"required": ["custom_field_definition_ids"]}
           ]
@@ -562,6 +598,13 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {"$ref": "#/$defs/Id"}
+        },
+        "field_values": {
+          "type": "array",
+          "description": "Precise field-value selectors. Use this when the same id exists in multiple scopes.",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ProfileFieldSelector"}
         },
         "record_ids": {
           "type": "array",
@@ -584,6 +627,7 @@
           "not": {
             "anyOf": [
               {"required": ["field_ids"]},
+              {"required": ["field_values"]},
               {"required": ["record_ids"]},
               {"required": ["scopes"]}
             ]
@@ -593,6 +637,7 @@
           "not": {"required": ["all_profile_data"]},
           "anyOf": [
             {"required": ["field_ids"]},
+            {"required": ["field_values"]},
             {"required": ["record_ids"]},
             {"required": ["scopes"]}
           ]

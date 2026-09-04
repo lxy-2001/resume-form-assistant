@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added precise `field_values` selectors for profile deletion and export so one scoped value can
+  be selected when a field ID exists in multiple scopes.
+
 - Added `profile.read` request/response contracts with a versioned `ProfileSnapshot` and an
   explicit empty state.
 - Added confirmed, version-checked `profile.delete` contracts with field, record, custom-field

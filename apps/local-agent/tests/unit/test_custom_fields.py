@@ -166,6 +166,9 @@ def test_custom_field_scope_and_sensitive_level_are_explicit_and_confirmed(
     [
         ("person.full_name", "其他名称"),
         ("custom.shadow-name", "姓名"),
+        ("custom.shadow-name-with-space", " 姓名 "),
+        ("custom.shadow-name-alias", "NAME"),
+        ("name", "其他字段"),
     ],
 )
 def test_custom_field_id_or_label_cannot_conflict_with_standard_catalog(
@@ -214,4 +217,165 @@ def test_custom_field_creation_cancelled_before_confirmation_has_no_permanent_de
     current = service.read(PROFILE_ID)
     assert not any(item.is_custom for item in current.field_definitions)
     assert current.fields == []
+    assert fake_profile_store.write_calls == 0
+
+
+def test_upsert_updates_existing_custom_definition_and_preserves_stable_id(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    definition = _definition(field_id="custom.editable-city")
+    created = service.create_custom_field(
+        PROFILE_ID,
+        expected_profile_version=0,
+        definition=definition,
+        value="beijing",
+        scope=Scope.GLOBAL,
+        user_confirmed=True,
+    )
+    revised = definition.model_copy(update={"label": "可接受城市（更新）"})
+
+    updated = service.upsert_extended(
+        PROFILE_ID,
+        expected_profile_version=created.profile_version,
+        custom_field_definitions=[revised],
+        user_confirmed=True,
+    )
+
+    stored_definition = next(item for item in updated.field_definitions if item.id == definition.id)
+    stored_value = next(item for item in updated.fields if item.id == definition.id)
+    assert stored_definition.label == "可接受城市（更新）"
+    assert stored_definition.created_at == definition.created_at
+    assert stored_value.label == "可接受城市（更新）"
+    assert stored_value.options == revised.options
+
+
+def test_custom_definition_update_rejects_incompatible_existing_value_without_write(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    definition = _definition(field_id="custom.incompatible-city")
+    created = service.create_custom_field(
+        PROFILE_ID,
+        expected_profile_version=0,
+        definition=definition,
+        value="beijing",
+        scope=Scope.GLOBAL,
+        user_confirmed=True,
+    )
+    revised = definition.model_copy(
+        update={
+            "options": [PageOption(value="shanghai", label="上海")],
+            "validation": ValidationRule(allowed_values=["shanghai"]),
+        }
+    )
+    writes_before = fake_profile_store.write_calls
+
+    with pytest.raises(InvalidFieldValueError):
+        service.upsert_extended(
+            PROFILE_ID,
+            expected_profile_version=created.profile_version,
+            custom_field_definitions=[revised],
+            user_confirmed=True,
+        )
+
+    assert fake_profile_store.write_calls == writes_before
+    assert (
+        next(item for item in service.read(PROFILE_ID).fields if item.id == definition.id).value
+        == "beijing"
+    )
+
+
+def test_custom_definition_update_rejects_existing_label_or_alias_conflict(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    first = _definition(field_id="custom.first-city", label="首选城市")
+    second = _definition(field_id="custom.second-city", label="备选城市")
+    created = service.create_custom_field(
+        PROFILE_ID,
+        expected_profile_version=0,
+        definition=first,
+        value="beijing",
+        scope=Scope.GLOBAL,
+        user_confirmed=True,
+    )
+    created = service.create_custom_field(
+        PROFILE_ID,
+        expected_profile_version=created.profile_version,
+        definition=second,
+        value="shanghai",
+        scope=Scope.GLOBAL,
+        user_confirmed=True,
+    )
+    writes_before = fake_profile_store.write_calls
+
+    with pytest.raises(CustomFieldConflictError):
+        service.upsert_extended(
+            PROFILE_ID,
+            expected_profile_version=created.profile_version,
+            custom_field_definitions=[first.model_copy(update={"label": " 备选城市 "})],
+            user_confirmed=True,
+        )
+
+    assert fake_profile_store.write_calls == writes_before
+
+
+def test_upsert_extended_rejects_duplicate_field_values_in_one_bundle(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    field = {
+        "id": "person.full_name",
+        "value": "Synthetic Person",
+        "scope": Scope.GLOBAL,
+        "confirmed": True,
+        "source": {"kind": "manual"},
+    }
+
+    with pytest.raises(InvalidFieldValueError) as caught:
+        service.upsert_extended(
+            PROFILE_ID,
+            expected_profile_version=0,
+            fields=[field, dict(field)],
+            user_confirmed=True,
+        )
+
+    assert caught.value.details.get("reason") == "duplicate_field"
+    assert fake_profile_store.write_calls == 0
+
+
+def test_upsert_extended_rejects_duplicate_definition_ids_in_one_bundle(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    definition = _definition(field_id="custom.duplicate-definition")
+
+    with pytest.raises(InvalidFieldValueError) as caught:
+        service.upsert_extended(
+            PROFILE_ID,
+            expected_profile_version=0,
+            custom_field_definitions=[definition, definition.model_copy(deep=True)],
+            user_confirmed=True,
+        )
+
+    assert caught.value.details.get("reason") == "duplicate_definition"
+    assert fake_profile_store.write_calls == 0
+
+
+def test_upsert_extended_rejects_colliding_new_definition_labels_in_one_bundle(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = _service(fake_profile_store)
+    first = _definition(field_id="custom.first-batch", label="批次字段一")
+    second = _definition(field_id="custom.second-batch", label=" 批次字段一 ")
+
+    with pytest.raises(CustomFieldConflictError):
+        service.upsert_extended(
+            PROFILE_ID,
+            expected_profile_version=0,
+            custom_field_definitions=[first, second],
+            user_confirmed=True,
+        )
+
     assert fake_profile_store.write_calls == 0

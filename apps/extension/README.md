@@ -8,14 +8,18 @@
 
 ```powershell
 cd apps/extension
-pnpm install
-pnpm test -- --run
-pnpm typecheck
-pnpm lint
-pnpm build
+npm install
+npm test -- --run
+npm run typecheck
+npm run lint
+npm run build
 ```
 
 F001 的 Options Page 用于维护本地资料、查看元数据、受控导出和确认删除；扩展 UI 不直接调用模型。
+
+F001 当前交付的是可独立运行的 Vite Options Page，不包含浏览器扩展 manifest、content
+script 或商店打包物。安装为 Chrome/Edge 扩展属于后续 F004/F017；打包后需要在本地服务中
+把对应的精确扩展 origin 加入 `RESUME_AGENT_ALLOWED_ORIGINS`，不能使用 `*`。
 
 ## 操作边界
 

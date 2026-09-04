@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = ROOT / "packages" / "contracts" / "v0.1" / "contracts.schema.json"
 EXAMPLES_PATH = ROOT / "packages" / "contracts" / "v0.1" / "examples"
@@ -75,9 +74,7 @@ def confirmed_field(*, scope: str = "global", scope_context: str | None = None) 
         ("profile-export-response.json", "ProfileExportResponse"),
     ],
 )
-def test_profile_lifecycle_examples_validate(
-    example_name: str, definition: str
-) -> None:
+def test_profile_lifecycle_examples_validate(example_name: str, definition: str) -> None:
     validator_for(definition).validate(load_example(example_name))
 
 
@@ -118,12 +115,42 @@ def test_scoped_profile_field_requires_exact_scope_context() -> None:
     with pytest.raises(ValidationError):
         validator.validate(confirmed_field(scope="website"))
 
-    validator.validate(
-        confirmed_field(scope="website", scope_context="website-example-careers")
-    )
+    validator.validate(confirmed_field(scope="website", scope_context="website-example-careers"))
 
     with pytest.raises(ValidationError):
         validator.validate(confirmed_field(scope_context="unexpected-global-context"))
+
+
+def test_field_value_selector_requires_scope_and_context_when_needed() -> None:
+    validator = validator_for("ProfileDeleteSelection")
+    validator.validate({"field_values": [{"id": "person.full_name", "scope": "global"}]})
+    validator.validate(
+        {
+            "field_values": [
+                {
+                    "id": "custom.city",
+                    "scope": "website",
+                    "scope_context": "jobs-example",
+                }
+            ]
+        }
+    )
+
+    for invalid in (
+        {"field_values": [{"id": "custom.city"}]},
+        {"field_values": [{"id": "custom.city", "scope": "website"}]},
+        {
+            "field_values": [
+                {
+                    "id": "custom.city",
+                    "scope": "global",
+                    "scope_context": "unexpected",
+                }
+            ]
+        },
+    ):
+        with pytest.raises(ValidationError):
+            validator.validate(invalid)
 
 
 def test_profile_upsert_requires_identity_and_optimistic_version() -> None:

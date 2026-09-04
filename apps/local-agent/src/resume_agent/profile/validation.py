@@ -24,6 +24,7 @@ from resume_agent.profile.models import (
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()-]{6,24}$")
+_MAX_INTEGER_BITS = 512
 
 
 def _invalid(field_type: FieldType, reason: str) -> InvalidFieldValueError:
@@ -83,8 +84,16 @@ def _check_allowed(
 
 
 def _check_number(value: float, field_type: FieldType, rule: ValidationRule | None) -> int | float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-        raise _invalid(field_type, "type")
+    # ``math.isfinite`` converts integers to C doubles and raises OverflowError
+    # for very large JSON integers. Integers are finite by construction; only
+    # floats need the finite check.
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or (isinstance(value, float) and not math.isfinite(value))
+        or (isinstance(value, int) and value.bit_length() > _MAX_INTEGER_BITS)
+    ):
+        raise _invalid(field_type, "type_or_range")
     if rule is not None:
         if rule.minimum is not None and value < rule.minimum:
             raise _invalid(field_type, "below_minimum")
@@ -192,8 +201,15 @@ def validate_value(
     if kind is FieldType.MULTIVALUE:
         if not isinstance(value, (list, tuple)) or not value:
             raise _invalid(kind, "type_or_empty")
-        normalized_values = list(value)
-        if len({repr(item) for item in normalized_values}) != len(normalized_values):
+        normalized_values: list[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                raise _invalid(kind, "item_type")
+            normalized = item.strip()
+            if not normalized:
+                raise _invalid(kind, "item_blank")
+            normalized_values.append(normalized)
+        if len(set(normalized_values)) != len(normalized_values):
             raise _invalid(kind, "duplicate")
         for item in normalized_values:
             _check_allowed(item, kind, constraints, allowed)

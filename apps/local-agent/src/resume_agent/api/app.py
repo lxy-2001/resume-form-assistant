@@ -1,8 +1,9 @@
 """Safety-focused FastAPI application shell for the local agent.
 
-This module deliberately contains no profile routes or persistence.  It provides
-only the boundary that later routes mount: loopback/origin checks, a request
-size limit, a health endpoint, and contract-shaped redacted errors.
+This module provides the shared safety boundary for the local profile routes:
+loopback/origin checks, a request size limit, a health endpoint, and
+contract-shaped redacted errors.  Profile persistence is injected by the runtime
+assembly rather than created by this module.
 """
 
 from __future__ import annotations
@@ -13,10 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
-from resume_agent.config import AppConfig
+from resume_agent.config import AppConfig, _normalize_origins
 from resume_agent.privacy.redaction import redact_details, redact_text, safe_operation_log
 from resume_agent.profile.errors import LifecycleError
 from resume_agent.storage.errors import StorageError
@@ -24,6 +27,8 @@ from resume_agent.storage.errors import StorageError
 SCHEMA_VERSION = "0.1"
 _DEFAULT_DATA_DIR_NAME = ".resume-agent"
 _SAFE_CLIENTS = frozenset({"127.0.0.1", "::1", "localhost"})
+_CORS_METHODS = "GET, HEAD, OPTIONS, POST"
+_CORS_HEADERS = frozenset({"accept", "content-type", "x-request-id", "x-task-id"})
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -108,7 +113,7 @@ class _RequestSafetyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         if self.require_loopback:
             client = request.client
-            if client is not None and client.host not in _SAFE_CLIENTS:
+            if client is None or client.host not in _SAFE_CLIENTS:
                 return JSONResponse(
                     _error_payload(
                         request,
@@ -130,6 +135,37 @@ class _RequestSafetyMiddleware(BaseHTTPMiddleware):
                 ),
                 status_code=403,
             )
+
+        if request.method == "OPTIONS" and origin:
+            requested_method = request.headers.get("access-control-request-method", "").upper()
+            requested_headers = {
+                item.strip().lower()
+                for item in request.headers.get("access-control-request-headers", "").split(",")
+                if item.strip()
+            }
+            if requested_method and requested_method not in {"GET", "HEAD", "OPTIONS", "POST"}:
+                return JSONResponse(
+                    _error_payload(
+                        request,
+                        code="ORIGIN_NOT_ALLOWED",
+                        message="requested CORS method is not allowed",
+                        retryable=False,
+                    ),
+                    status_code=403,
+                )
+            if not requested_headers.issubset(_CORS_HEADERS):
+                return JSONResponse(
+                    _error_payload(
+                        request,
+                        code="ORIGIN_NOT_ALLOWED",
+                        message="requested CORS headers are not allowed",
+                        retryable=False,
+                    ),
+                    status_code=403,
+                )
+            response = Response(status_code=204)
+            _add_cors_headers(response, origin)
+            return response
 
         length = request.headers.get("content-length")
         if length is not None:
@@ -169,7 +205,19 @@ class _RequestSafetyMiddleware(BaseHTTPMiddleware):
                     status_code=413,
                 )
             request._body = body
-        return await call_next(request)
+        response = await call_next(request)
+        if origin and origin in self.allowed_origins:
+            _add_cors_headers(response, origin)
+        return response
+
+
+def _add_cors_headers(response: Response, origin: str) -> None:
+    """Attach CORS headers only for an exact configured origin."""
+
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Methods"] = _CORS_METHODS
+    response.headers["Access-Control-Allow-Headers"] = ", ".join(sorted(_CORS_HEADERS))
+    response.headers.add_vary_header("Origin")
 
 
 def _default_config() -> AppConfig:
@@ -188,11 +236,14 @@ def create_app(
     """Build the local API app without starting a server or performing I/O."""
 
     effective_config = config or _default_config()
-    configured_origins = (
-        frozenset(allowed_origins)
-        if allowed_origins is not None
-        else frozenset(getattr(effective_config, "allowed_origins", ()))
-    )
+    try:
+        configured_origins = frozenset(
+            _normalize_origins(allowed_origins)
+            if allowed_origins is not None
+            else _normalize_origins(getattr(effective_config, "allowed_origins", ()))
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("allowed_origins must contain exact, non-wildcard origins") from exc
     app = FastAPI(title=effective_config.app_name)
     app.add_middleware(
         _RequestSafetyMiddleware,
@@ -209,6 +260,20 @@ def create_app(
     async def storage_error(request: Request, exc: StorageError) -> JSONResponse:
         status = 503 if exc.code == "STORAGE_UNAVAILABLE" else 500
         return _typed_error_response(request, exc, status)
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_error(request: Request, _: RequestValidationError) -> JSONResponse:
+        failed_operation = request.headers.get("x-operation")
+        return JSONResponse(
+            _error_payload(
+                request,
+                code="INVALID_FIELD_VALUE",
+                message="request body is invalid",
+                retryable=False,
+                failed_operation=failed_operation,
+            ),
+            status_code=400,
+        )
 
     @app.exception_handler(LifecycleError)
     async def lifecycle_error(request: Request, exc: LifecycleError) -> JSONResponse:

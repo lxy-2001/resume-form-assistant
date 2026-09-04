@@ -41,13 +41,15 @@ from resume_agent.profile.models import (
 from resume_agent.profile.policy import DEFAULT_POLICY, ConfirmationPolicy
 from resume_agent.profile.standard_fields import standard_field_definitions
 from resume_agent.profile.validation import validate_field_value
-from resume_agent.storage.base import ProfileStore
+from resume_agent.storage.base import ProfileDataDeletionStore, ProfileStore
+from resume_agent.storage.errors import StorageCleanupError
 
 Clock: TypeAlias = Callable[[], datetime]
 Definition: TypeAlias = StandardFieldDefinition | CustomFieldDefinition
 CatalogProvider: TypeAlias = Callable[[], Iterable[Definition]]
 FieldInput: TypeAlias = FieldValue | Mapping[str, Any]
 RecordInput: TypeAlias = RepeatableRecord | Mapping[str, Any]
+FieldSelector: TypeAlias = tuple[str, Scope, str | None]
 
 DEFAULT_PROFILE_ID = "default-profile"
 
@@ -253,6 +255,8 @@ class ProfileService:
 
             scope_context = candidate_data.get("scope_context")
             if scope is Scope.GLOBAL:
+                if "scope_context" in candidate_data:
+                    raise self._invalid(field_id, "scope_context", definition.field_type)
                 scope_context = None
             elif not is_contract_id(scope_context):
                 raise self._invalid(field_id, "scope_context", definition.field_type)
@@ -315,7 +319,7 @@ class ProfileService:
             raise
         except InvalidFieldValueError:
             raise
-        except (ValidationError, TypeError, ValueError) as exc:
+        except (ValidationError, TypeError, ValueError, OverflowError) as exc:
             raise self._invalid(field_id, "metadata", definition.field_type) from exc
         return normalised, caller_timestamp
 
@@ -326,9 +330,14 @@ class ProfileService:
             raise self._invalid(None, "empty")
         definitions = definitions or self._definition_index()
         result: list[FieldValue] = []
+        seen_keys: set[tuple[str, Scope, str | None]] = set()
         latest_input_timestamp: datetime | None = None
         for raw in fields:
             value, supplied_timestamp = self._normalise_input(raw, definitions)
+            key = _field_key(value)
+            if key in seen_keys:
+                raise self._invalid(value.id, "duplicate_field")
+            seen_keys.add(key)
             result.append(value)
             if supplied_timestamp is not None and (
                 latest_input_timestamp is None or supplied_timestamp > latest_input_timestamp
@@ -476,9 +485,14 @@ class ProfileService:
         if not fields:
             raise self._invalid(None, "empty")
         result: list[FieldValue] = []
+        seen_keys: set[tuple[str, Scope, str | None]] = set()
         latest: datetime | None = None
         for raw in fields:
             value, supplied = self._normalise_input(raw, definitions)
+            key = _field_key(value)
+            if key in seen_keys:
+                raise self._invalid(value.id, "duplicate_field")
+            seen_keys.add(key)
             result.append(value)
             if supplied is not None and (latest is None or supplied > latest):
                 latest = supplied
@@ -583,6 +597,8 @@ class ProfileService:
         self,
         current: ProfileSnapshot,
         definition: CustomFieldDefinition,
+        *,
+        allow_existing_id: str | None = None,
     ) -> CustomFieldDefinition:
         from resume_agent.profile.errors import CustomFieldConflictError
 
@@ -590,13 +606,43 @@ class ProfileService:
             raise self._invalid(None, "definition")
         if not is_contract_id(definition.id):
             raise self._invalid(None, "definition_id")
+        label = definition.label.strip()
+        if not label:
+            raise self._invalid(definition.id, "blank_label")
+        aliases: list[str] = []
+        for raw_alias in definition.aliases or []:
+            if not isinstance(raw_alias, str):
+                raise self._invalid(definition.id, "alias")
+            alias = raw_alias.strip()
+            if not alias:
+                raise self._invalid(definition.id, "blank_alias")
+            if alias.casefold() not in {item.casefold() for item in aliases}:
+                aliases.append(alias)
+        definition = definition.model_copy(update={"label": label, "aliases": aliases or None})
         standards = self._catalog_definitions()
-        if any(item.id == definition.id for item in standards) or any(
-            item.label.casefold() == definition.label.casefold() for item in standards
-        ):
+        standard_names = {
+            name.strip().casefold()
+            for item in standards
+            for name in [item.id, item.label, *(item.aliases or [])]
+        }
+        candidate_names = {
+            definition.id.strip().casefold(),
+            label.casefold(),
+            *(alias.casefold() for alias in aliases),
+        }
+        if candidate_names & standard_names:
             raise CustomFieldConflictError("custom field conflicts with standard field")
-        if any(item.id == definition.id for item in current.field_definitions):
-            raise CustomFieldConflictError("custom field already exists")
+        allow_id = allow_existing_id.casefold() if allow_existing_id else None
+        existing_names = {
+            name.strip().casefold()
+            for item in current.field_definitions
+            if item.id.casefold() != allow_id
+            for name in [item.id, item.label, *(item.aliases or [])]
+        }
+        if candidate_names & existing_names:
+            if definition.id.strip().casefold() in existing_names:
+                raise CustomFieldConflictError("custom field already exists")
+            raise CustomFieldConflictError("custom field conflicts with an existing definition")
         if definition.options:
             values = [option.value for option in definition.options]
             if len({repr(value) for value in values}) != len(values):
@@ -626,10 +672,11 @@ class ProfileService:
             "id": definition.id,
             "value": value,
             "scope": scope,
-            "scope_context": scope_context,
             "confirmed": True,
             "source": {"kind": SourceKind.MANUAL.value},
         }
+        if scope != Scope.GLOBAL:
+            candidate["scope_context"] = scope_context
         normalised, supplied_timestamp = self._normalise_input(candidate, definitions)
         timestamp = supplied_timestamp or self._safe_clock(_utc_now())
         persisted_definition = definition.model_copy(
@@ -699,10 +746,11 @@ class ProfileService:
             "id": field_id,
             "value": value,
             "scope": chosen_scope,
-            "scope_context": chosen_context,
             "confirmed": True,
             "source": {"kind": SourceKind.MANUAL.value},
         }
+        if chosen_scope != Scope.GLOBAL:
+            candidate["scope_context"] = chosen_context
         normalised, supplied_timestamp = self._normalise_input(
             candidate, self._us2_definitions(current)
         )
@@ -733,9 +781,15 @@ class ProfileService:
         )
         if not any(item.id == field_id and item.is_custom for item in current.field_definitions):
             raise self._invalid(field_id, "unknown_custom_field")
+        records: list[RepeatableRecord] = []
+        for record in current.records:
+            remaining = [field for field in record.fields if field.id != field_id]
+            if remaining:
+                records.append(record.model_copy(update={"fields": remaining}))
         return self._us2_write(
             current,
             fields=[item for item in current.fields if item.id != field_id],
+            records=records,
             definitions=[item for item in current.field_definitions if item.id != field_id],
         )
 
@@ -772,6 +826,7 @@ class ProfileService:
         definitions = self._us2_definitions(current)
         persisted_defs = [item.model_copy(deep=True) for item in current.field_definitions]
         new_definition_ids: set[str] = set()
+        seen_definition_ids: set[str] = set()
         for raw_definition in custom_field_definitions:
             try:
                 definition = (
@@ -781,18 +836,54 @@ class ProfileService:
                 )
             except (ValidationError, TypeError, ValueError) as exc:
                 raise self._invalid(None, "definition") from exc
-            definition = self._validate_custom_definition(current, definition)
-            if definition.id in definitions or any(
-                item.label.casefold() == definition.label.casefold() for item in persisted_defs
-            ):
-                raise CustomFieldConflictError("custom field conflicts with an existing definition")
-            new_definition_ids.add(definition.id)
+            if definition.id in seen_definition_ids:
+                raise self._invalid(definition.id, "duplicate_definition")
+            seen_definition_ids.add(definition.id)
+            existing_definition = next(
+                (item for item in persisted_defs if item.id == definition.id and item.is_custom),
+                None,
+            )
+            # Validate each item against definitions already staged in this
+            # bundle as well as the persisted snapshot. This prevents two new
+            # definitions with colliding labels/aliases from entering together.
+            definition_context = current.model_copy(update={"field_definitions": persisted_defs})
+            definition = self._validate_custom_definition(
+                definition_context,
+                definition,
+                allow_existing_id=existing_definition.id if existing_definition else None,
+            )
+            if existing_definition is not None:
+                # A definition update keeps its stable ID and original creation time.
+                # Existing values must remain valid under the new definition; otherwise
+                # reject the whole bundle before storage is touched.
+                for candidate in [
+                    *current.fields,
+                    *(field for record in current.records for field in record.fields),
+                ]:
+                    if candidate.id != definition.id:
+                        continue
+                    if candidate.scope not in definition.allowed_scopes:
+                        raise self._invalid(definition.id, "scope", definition.field_type)
+                    validate_field_value(candidate, definition)
+                definition = definition.model_copy(
+                    update={"created_at": existing_definition.created_at}
+                )
+                persisted_defs = [
+                    definition if item.id == definition.id else item for item in persisted_defs
+                ]
+            else:
+                new_definition_ids.add(definition.id)
+                persisted_defs.append(definition)
             definitions[definition.id] = definition
-            persisted_defs.append(definition)
         normalised_fields: list[FieldValue] = []
+        seen_field_keys: set[tuple[str, Scope, str | None]] = set()
         latest: datetime | None = None
         for raw_field in fields:
             field, supplied = self._normalise_input(raw_field, definitions)
+            key = _field_key(field)
+            if key in seen_field_keys:
+                raise self._invalid(field.id, "duplicate_field")
+            seen_field_keys.add(key)
             normalised_fields.append(field)
             if supplied is not None and (latest is None or supplied > latest):
                 latest = supplied
@@ -832,18 +923,30 @@ class ProfileService:
                 )
             ]
             fields_out.append(field)
-        if delete_field_ids:
-            if any(not is_contract_id(item) for item in delete_field_ids):
-                raise self._invalid(None, "field_id")
-            field_ids = set(delete_field_ids)
-            fields_out = [item for item in fields_out if item.id not in field_ids]
-
         records_out = [
             item
             for item in current.records
             if item.record_id not in {record.record_id for record in normalised_records}
         ]
         records_out.extend(normalised_records)
+        if delete_field_ids:
+            if any(not is_contract_id(item) for item in delete_field_ids):
+                raise self._invalid(None, "field_id")
+            field_ids = set(delete_field_ids)
+            known_field_ids = {item.id for item in fields_out} | {
+                field.id for record in records_out for field in record.fields
+            }
+            if not field_ids.issubset(known_field_ids):
+                raise self._invalid(None, "unknown_field")
+            fields_out = [item for item in fields_out if item.id not in field_ids]
+            records_out = [
+                record.model_copy(
+                    update={
+                        "fields": [field for field in record.fields if field.id not in field_ids]
+                    }
+                )
+                for record in records_out
+            ]
         if record_order is not None:
             requested = list(record_order)
             if any(not is_contract_id(item) for item in requested):
@@ -892,6 +995,54 @@ class ProfileService:
                 )
                 for record in records_out
             ]
+        updated_definition_ids = {
+            definition.id
+            for definition in persisted_defs
+            if definition.is_custom
+            and any(
+                item.id == definition.id and item.id not in new_definition_ids
+                for item in current.field_definitions
+            )
+        }
+        if updated_definition_ids:
+            definition_index = {item.id: item for item in persisted_defs}
+
+            def refresh_field(field: FieldValue) -> FieldValue:
+                definition = definition_index.get(field.id)
+                if definition is None or field.id not in updated_definition_ids:
+                    return field
+                levels = {
+                    Sensitivity.NORMAL: 0,
+                    Sensitivity.SENSITIVE: 1,
+                    Sensitivity.HIGHLY_SENSITIVE: 2,
+                }
+                sensitivity = (
+                    field.sensitivity
+                    if levels[field.sensitivity] >= levels[definition.default_sensitivity]
+                    else definition.default_sensitivity
+                )
+                return field.model_copy(
+                    update={
+                        "label": definition.label,
+                        "field_type": definition.field_type,
+                        "sensitivity": sensitivity,
+                        "requires_confirmation": (
+                            definition.requires_confirmation or sensitivity != Sensitivity.NORMAL
+                        ),
+                        "is_custom": True,
+                        "aliases": definition.aliases,
+                        "options": definition.options,
+                        "validation": definition.validation,
+                    }
+                )
+
+            fields_out = [refresh_field(field) for field in fields_out]
+            records_out = [
+                record.model_copy(
+                    update={"fields": [refresh_field(field) for field in record.fields]}
+                )
+                for record in records_out
+            ]
         # Drop records that would become invalid confirmed-empty records.
         records_out = [record for record in records_out if record.fields]
         records_out = [
@@ -912,13 +1063,16 @@ class ProfileService:
     def _validate_delete_selection(selection: Mapping[str, Any]) -> tuple[str, Any]:
         if not isinstance(selection, Mapping):
             raise InvalidProfileSelectionError("delete selection is invalid")
-        allowed = {"field_ids", "record_ids", "custom_field_definition_ids", "delete_all"}
-        if set(selection) - allowed:
+        allowed = {
+            "field_ids",
+            "field_values",
+            "record_ids",
+            "custom_field_definition_ids",
+            "delete_all",
+        }
+        if set(selection) - allowed or len(selection) != 1:
             raise InvalidProfileSelectionError("delete selection is invalid")
-        present = [key for key in allowed if key in selection]
-        if len(present) != 1:
-            raise InvalidProfileSelectionError("delete selection is ambiguous")
-        kind = present[0]
+        kind = next(iter(selection))
         value = selection[kind]
         if kind == "delete_all":
             if value is not True:
@@ -926,6 +1080,53 @@ class ProfileService:
             return kind, value
         if not isinstance(value, list) or not value:
             raise InvalidProfileSelectionError("delete selection is empty")
+        if kind == "field_values":
+            selectors: list[FieldSelector] = []
+            seen: set[FieldSelector] = set()
+            for raw in value:
+                if (
+                    not isinstance(raw, Mapping)
+                    or set(raw)
+                    - {
+                        "id",
+                        "scope",
+                        "scope_context",
+                    }
+                    or "id" not in raw
+                    or "scope" not in raw
+                ):
+                    raise InvalidProfileSelectionError("field value selector is invalid")
+                field_id = raw.get("id")
+                if not isinstance(field_id, str) or not is_contract_id(field_id):
+                    raise InvalidProfileSelectionError("field value selector contains invalid id")
+                try:
+                    raw_scope = raw.get("scope")
+                    if not isinstance(raw_scope, (str, Scope)):
+                        raise TypeError("scope")
+                    scope = raw_scope if isinstance(raw_scope, Scope) else Scope(raw_scope)
+                except (TypeError, ValueError) as exc:
+                    raise InvalidProfileSelectionError(
+                        "field value selector has invalid scope"
+                    ) from exc
+                context = raw.get("scope_context")
+                if scope is Scope.GLOBAL:
+                    if "scope_context" in raw:
+                        raise InvalidProfileSelectionError(
+                            "global field value selector cannot have scope_context"
+                        )
+                    context = None
+                elif not is_contract_id(context):
+                    raise InvalidProfileSelectionError(
+                        "website/application field value selector requires scope_context"
+                    )
+                selector = (field_id, scope, context)
+                if selector in seen:
+                    raise InvalidProfileSelectionError(
+                        "delete selection contains duplicate field value selectors"
+                    )
+                seen.add(selector)
+                selectors.append(selector)
+            return kind, selectors
         if any(not is_contract_id(item) for item in value):
             raise InvalidProfileSelectionError("delete selection contains invalid ids")
         if len(value) != len(set(value)):
@@ -933,7 +1134,12 @@ class ProfileService:
         return kind, value
 
     def _delete_all(self, current: ProfileSnapshot, *, selected: str) -> dict[str, Any]:
-        deleted_field_ids = list(dict.fromkeys(field.id for field in current.fields))
+        deleted_field_ids = list(
+            dict.fromkeys(
+                [field.id for field in current.fields]
+                + [field.id for record in current.records for field in record.fields]
+            )
+        )
         deleted_record_ids = [record.record_id for record in current.records]
         deleted_definition_ids = [
             definition.id for definition in current.field_definitions if definition.is_custom
@@ -941,43 +1147,49 @@ class ProfileService:
         cleanup_pending: list[str] = []
         warnings: list[dict[str, str]] = []
         file_deleted = False
-        try:
-            self._store.delete()
-            file_deleted = True
-        except Exception:  # noqa: BLE001 - cleanup must report partial failure
-            cleanup_pending.append("encrypted_snapshot")
-            warnings.append(
-                {
+
+        def warning_for(component: str) -> dict[str, str]:
+            if component == "encrypted_snapshot":
+                return {
                     "code": "ENCRYPTED_SNAPSHOT_DELETE_FAILED",
                     "message": "加密资料文件未能删除，请重试或手动处理。",
                     "severity": "error",
                 }
-            )
-        provider = getattr(self._store, "key_provider", None)
-        if file_deleted:
-            if provider is not None and callable(getattr(provider, "destroy_key", None)):
-                try:
-                    provider.destroy_key()
-                except Exception:  # noqa: BLE001 - cleanup must report partial failure
-                    cleanup_pending.append("key_reference")
-                    warnings.append(
-                        {
-                            "code": "KEY_REFERENCE_DELETE_FAILED",
-                            "message": "本地密钥引用未能清理，请重试。",
-                            "severity": "error",
-                        }
-                    )
-            elif provider is not None:
+            return {
+                "code": "KEY_REFERENCE_DELETE_FAILED",
+                "message": "本地密钥引用未能清理，请重试。",
+                "severity": "error",
+            }
+
+        # Encryption-aware stores own both the snapshot and its key reference.
+        # Use the explicit capability when available; never reach through a
+        # concrete store's private attributes from the domain service.
+        deleter = (
+            self._store.delete_profile_data
+            if isinstance(self._store, ProfileDataDeletionStore)
+            else None
+        )
+        if deleter is not None:
+            try:
+                deleter()
+                file_deleted = True
+            except StorageCleanupError as exc:
+                cleanup_pending.extend(exc.pending)
+                file_deleted = "encrypted_snapshot" not in cleanup_pending
+            except Exception:  # noqa: BLE001 - unknown cleanup state is fail-closed
+                cleanup_pending.extend(("encrypted_snapshot", "key_reference"))
+        else:
+            # A plain ProfileStore has no declared key-cleanup capability. It is
+            # safer to report the unverified key reference as pending than to
+            # claim that all personal data has been removed.
+            try:
+                self._store.delete()
+                file_deleted = True
                 cleanup_pending.append("key_reference")
-                warnings.append(
-                    {
-                        "code": "KEY_REFERENCE_DELETE_FAILED",
-                        "message": "本地密钥引用未能清理，请重试。",
-                        "severity": "error",
-                    }
-                )
-        elif provider is not None:
-            cleanup_pending.append("key_reference")
+            except Exception:  # noqa: BLE001 - cleanup must report partial failure
+                cleanup_pending.extend(("encrypted_snapshot", "key_reference"))
+        cleanup_pending = list(dict.fromkeys(cleanup_pending))
+        warnings = [warning_for(component) for component in cleanup_pending]
         task_state = "partial" if cleanup_pending else "completed"
         return {
             "profile_id": current.profile_id,
@@ -1010,53 +1222,99 @@ class ProfileService:
         if kind == "delete_all":
             return self._delete_all(current, selected=selected)
 
-        ids = set(value)
         fields_before = list(current.fields)
         records_before = list(current.records)
         definitions_before = list(current.field_definitions)
-        fields = [field for field in fields_before if field.id not in ids]
-        definitions = definitions_before
+        fields = list(fields_before)
+        definitions = list(definitions_before)
         records: list[RepeatableRecord] = []
         deleted_record_ids: list[str] = []
+        deleted_field_ids: list[str] = []
+        deleted_definition_ids: list[str] = []
         if kind == "record_ids":
+            ids = set(value)
+            record_ids_before = {record.record_id for record in records_before}
+            if not ids.issubset(record_ids_before):
+                raise InvalidProfileSelectionError("delete selection contains unknown record ids")
             records = [record for record in records_before if record.record_id not in ids]
             deleted_record_ids = [
                 record.record_id for record in records_before if record.record_id in ids
             ]
-        else:
+        elif kind in {"field_ids", "field_values"}:
+            if kind == "field_ids":
+                ids = set(value)
+                available_keys = {_field_key(field) for field in fields_before} | {
+                    _field_key(field) for record in records_before for field in record.fields
+                }
+                available_ids = {field_id for field_id, _, _ in available_keys}
+                if not ids.issubset(available_ids):
+                    raise InvalidProfileSelectionError(
+                        "delete selection contains unknown field ids"
+                    )
+                selected_keys = {key for key in available_keys if key[0] in ids}
+            else:
+                selected_keys = set(value)
+                available_keys = {_field_key(field) for field in fields_before} | {
+                    _field_key(field) for record in records_before for field in record.fields
+                }
+                if not selected_keys.issubset(available_keys):
+                    raise InvalidProfileSelectionError(
+                        "delete selection contains unknown field value selectors"
+                    )
+            fields = [field for field in fields_before if _field_key(field) not in selected_keys]
             for record in records_before:
-                filtered = [field for field in record.fields if field.id not in ids]
+                filtered = [
+                    field for field in record.fields if _field_key(field) not in selected_keys
+                ]
                 if filtered:
                     records.append(record.model_copy(update={"fields": filtered}))
                 else:
-                    records.append(record)
-        deleted_field_ids: list[str] = []
-        deleted_definition_ids: list[str] = []
-        if kind == "field_ids":
-            deleted_field_ids = [
-                field_id
-                for field_id in value
-                if any(field.id == field_id for field in fields_before)
-                or any(field.id == field_id for record in records_before for field in record.fields)
-            ]
+                    deleted_record_ids.append(record.record_id)
+            deleted_field_ids = list(
+                dict.fromkeys(
+                    field.id
+                    for field in [
+                        *fields_before,
+                        *(field for record in records_before for field in record.fields),
+                    ]
+                    if _field_key(field) in selected_keys
+                )
+            )
         elif kind == "custom_field_definition_ids":
+            ids = set(value)
             standard_ids = {definition.id for definition in self._catalog_definitions()}
             if ids & standard_ids:
                 raise InvalidProfileSelectionError("standard field definitions cannot be deleted")
             existing_custom = {
                 definition.id for definition in definitions_before if definition.is_custom
             }
+            if not ids.issubset(existing_custom):
+                raise InvalidProfileSelectionError(
+                    "delete selection contains unknown custom field ids"
+                )
             deleted_definition_ids = [field_id for field_id in value if field_id in existing_custom]
             fields = [field for field in fields_before if field.id not in ids]
-            records = [
-                record.model_copy(
-                    update={"fields": [field for field in record.fields if field.id not in ids]}
-                )
-                for record in records_before
-            ]
+            records = []
+            deleted_record_ids = []
+            for record in records_before:
+                filtered = [field for field in record.fields if field.id not in ids]
+                if filtered:
+                    records.append(record.model_copy(update={"fields": filtered}))
+                else:
+                    deleted_record_ids.append(record.record_id)
             definitions = [
                 definition for definition in definitions_before if definition.id not in ids
             ]
+            deleted_field_ids = list(
+                dict.fromkeys(
+                    field.id
+                    for field in [
+                        *fields_before,
+                        *(field for record in records_before for field in record.fields),
+                    ]
+                    if field.id in ids
+                )
+            )
         else:
             definitions = definitions_before
         records = [record for record in records if record.fields]

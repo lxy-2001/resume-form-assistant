@@ -15,3 +15,11 @@ class StorageUnavailableError(StorageError):
 
 class StorageCorruptOrUnrecoverableError(StorageError):
     code = "STORAGE_CORRUPT_OR_UNRECOVERABLE"
+
+
+class StorageCleanupError(StorageUnavailableError):
+    """A full-profile cleanup completed only for some storage components."""
+
+    def __init__(self, message: str, *, pending: tuple[str, ...]) -> None:
+        self.pending = tuple(dict.fromkeys(pending))
+        super().__init__(message, details={"pending": list(self.pending)})

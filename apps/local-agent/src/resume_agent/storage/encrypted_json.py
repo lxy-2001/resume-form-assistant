@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from resume_agent.profile.models import ProfileSnapshot
 from resume_agent.storage.base import AtomicWriter
 from resume_agent.storage.errors import (
+    StorageCleanupError,
     StorageCorruptOrUnrecoverableError,
     StorageUnavailableError,
 )
@@ -212,10 +213,16 @@ class EncryptedJsonProfileStore:
         except StorageCorruptOrUnrecoverableError as exc:
             raise StorageUnavailableError("encryption key is unavailable") from exc
 
-    def _key_for_write(self) -> bytes:
+    def _key_for_write(self, *, existing_snapshot: bool) -> bytes:
         try:
             key = self.key_provider.get_key()
             if key is None:
+                if existing_snapshot:
+                    # A missing key for an existing ciphertext is a recovery
+                    # condition.  Provisioning a replacement here would make
+                    # the next write permanently overwrite data we cannot
+                    # decrypt.
+                    raise StorageUnavailableError("encryption key is unavailable")
                 key = self.key_provider.provision_key()
         except StorageUnavailableError:
             raise
@@ -244,7 +251,11 @@ class EncryptedJsonProfileStore:
         if not isinstance(snapshot, ProfileSnapshot):
             raise _corrupt("profile snapshot is invalid")
         with self._lock:
-            envelope = encode_envelope(snapshot, self._key_for_write(), aad=self.aad)
+            envelope = encode_envelope(
+                snapshot,
+                self._key_for_write(existing_snapshot=self.path.exists()),
+                aad=self.aad,
+            )
             payload = json.dumps(
                 envelope, ensure_ascii=False, sort_keys=True, separators=(",", ":")
             ).encode("utf-8")
@@ -266,13 +277,25 @@ class EncryptedJsonProfileStore:
         """Remove the encrypted snapshot, then clear its key reference."""
 
         with self._lock:
-            self.delete()
+            try:
+                self.delete()
+            except Exception as exc:
+                raise StorageCleanupError(
+                    "encrypted profile snapshot could not be deleted",
+                    pending=("encrypted_snapshot", "key_reference"),
+                ) from exc
             try:
                 self.key_provider.destroy_key()
             except StorageUnavailableError:
-                raise
+                raise StorageCleanupError(
+                    "profile encryption key reference could not be deleted",
+                    pending=("key_reference",),
+                )
             except Exception as exc:
-                raise StorageUnavailableError("encryption key could not be deleted") from exc
+                raise StorageCleanupError(
+                    "profile encryption key reference could not be deleted",
+                    pending=("key_reference",),
+                ) from exc
 
 
 __all__ = [

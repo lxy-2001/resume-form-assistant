@@ -167,6 +167,21 @@ describe("ProfilePage repeated records and custom fields", () => {
     expect(screen.queryByText("未确认的合成字段")).not.toBeInTheDocument();
   });
 
+  it("removes an unsaved new record locally without sending an unknown delete", async () => {
+    const client = clientFor(snapshot);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<ProfilePage client={client} profileId={profileId} />);
+
+    await screen.findByText("Synthetic University");
+    fireEvent.click(screen.getByRole("button", { name: /新增工作经历/ }));
+    const articles = screen.getAllByRole("article");
+    const newArticle = articles.at(-1)!;
+    fireEvent.click(within(newArticle).getByRole("button", { name: "删除" }));
+
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(2));
+    expect(client.upsert).not.toHaveBeenCalled();
+  });
+
   it("creates a typed custom enum field only after explicit confirmation", async () => {
     const client = clientFor(snapshot);
     render(<ProfilePage client={client} profileId={profileId} />);
@@ -196,5 +211,45 @@ describe("ProfilePage repeated records and custom fields", () => {
       }),
     ]);
     expect((input.fields as Array<{ id: string; value: string }>).some((field) => field.id.startsWith("custom.") && field.value === "beijing")).toBe(true);
+  });
+
+  it("preserves existing custom definition metadata while editing its value", async () => {
+    const customDefinition = {
+      id: "custom.metadata-preserved",
+      label: "申请备注",
+      field_type: "text" as const,
+      default_sensitivity: "normal" as const,
+      requires_confirmation: true,
+      is_custom: true,
+      allowed_scopes: ["global" as const],
+      aliases: ["备注"],
+      validation: { max_length: 120 },
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const customSnapshot: ProfileSnapshot = {
+      ...snapshot,
+      fields: [{
+        ...field("custom.metadata-preserved", "申请备注", "原始备注"),
+        is_custom: true,
+      }],
+      field_definitions: [customDefinition],
+    };
+    const client = clientFor(customSnapshot);
+    render(<ProfilePage client={client} profileId={profileId} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "编辑定义" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /字段值/ }), {
+      target: { value: "更新后的备注" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认更新" }));
+
+    await waitFor(() => expect(client.upsert).toHaveBeenCalledTimes(1));
+    expect(client.upsert.mock.calls[0][0].custom_field_definitions).toEqual([
+      expect.objectContaining({
+        aliases: ["备注"],
+        validation: { max_length: 120 },
+      }),
+    ]);
   });
 });

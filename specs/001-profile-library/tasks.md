@@ -29,7 +29,7 @@ description: "Task list for F001 local profile library"
 
 **CRITICAL**: No user-story implementation is complete until this phase and its contract checkpoint pass.
 
-- [x] T006 Verified the merged lifecycle schema, examples, operation table, and contract tests for `profile.read`, `profile.delete`, and `profile.export` in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/; 55 contract tests pass.
+- [x] T006 Verified the merged lifecycle schema, examples, operation table, and contract tests for `profile.read`, `profile.delete`, and `profile.export` in packages/contracts/v0.1/contracts.schema.json, packages/contracts/v0.1/examples/, and tests/contracts/; 58 contract and privacy tests pass.
 - [x] T007 [P] Define Profile, field definitions, field values, repeatable records, scopes, and serialization boundaries in apps/local-agent/src/resume_agent/profile/models.py.
 - [x] T008 [P] Define typed domain/storage errors and privacy-safe error details in apps/local-agent/src/resume_agent/profile/errors.py, apps/local-agent/src/resume_agent/storage/errors.py, and apps/local-agent/src/resume_agent/privacy/redaction.py.
 - [x] T009 [P] Define ProfileStore, KeyProvider, and atomic-writer interfaces in apps/local-agent/src/resume_agent/storage/base.py and apps/local-agent/src/resume_agent/storage/key_provider.py.
@@ -125,7 +125,7 @@ description: "Task list for F001 local profile library"
 - [x] T050 [P] Update apps/local-agent/README.md and apps/extension/README.md with local setup, key recovery limits, and data deletion/export guidance.
 - [x] T051 Run the scenarios in specs/001-profile-library/quickstart.md and record results in the F001 pull request.
 - [x] T052 Run Python tests, TypeScript tests, type checks, formatters, contract checks, and privacy audits; record exact results in specs/001-profile-library/quickstart.md.
-- [x] T053 Update docs/product/roadmap.md from Specifying to Implementing/Reviewing only at the corresponding verified milestone.
+- [x] T053 Update docs/product/roadmap.md at each verified milestone; leave the final Done transition until the corrective review is merged.
 
 ## Dependencies and Execution Order
 
@@ -192,3 +192,16 @@ validation internals may proceed in parallel once their interfaces exist.
 - The lifecycle contract amendment was merged through shared-contracts PR #1 and remains maintained in packages/contracts; it is not duplicated under the F001 directory.
 - The key provider must fail closed for unavailable or untrusted backends; never add a plaintext fallback.
 - Real profiles, API keys, local data, and exported files remain outside Git.
+
+## Phase 7: Convergence
+
+本阶段由实现后的规格收敛检查追加，用于关闭审阅中发现的剩余差距；仍遵守按 Phase 集中提交。
+
+- [x] T054 [US3] 让 profile.upsert/delete 的响应准确报告实际删除的字段、记录和自定义定义（包括记录因字段变空而被移除，以及完整删除时记录字段），并补充路由回归测试。 per FR-017/契约响应规则；路由回归覆盖间接字段删除和空记录移除。
+- [x] T055 [US1][US2] 收紧多值元素的字符串、非空、规范化和去重校验；自定义字段名称按去空白、大小写和标准别名检查冲突，并补充服务测试。 per FR-005/FR-009/Edge Cases；服务测试覆盖规范化、重复和冲突。
+- [x] T056 [US3] 使本地生命周期请求的成功和 partial 终态在同一进程内可安全重试，补充 partial 重试和请求标识回归测试，并记录进程重启后的版本保护边界。 per profile-lifecycle idempotency rule；路由测试覆盖重放，契约文档记录进程重启由版本号保护。
+- [x] T057 [US1][US3] 让 loopback/CORS 边界在缺少客户端地址时 fail-closed，确认请求体校验错误不回显输入，并补充启动入口、允许来源和错误响应文档。 per Constitution III/FR-014/plan API boundary；启动、来源、错误响应及 malformed nested JSON 边界测试和 README 已更新。
+- [x] T058 [US2] 支持已确认自定义字段定义的受控修改（保留稳定 ID、校验既有值兼容性、同步字段元数据），并在 Options Page 提供明确的编辑确认入口。 per FR-008；服务与 Options Page 测试覆盖稳定 ID、既有值兼容和元数据同步。
+- [x] T059 [US1][US2] 让顶层字段和重复记录使用类型感知控件，布尔值保留未选择状态，枚举显示允许选项，多值/富文本可编辑，并补充 UI 回归测试。 per FR-005/FR-006；类型控件、空状态和元数据 UI 回归测试通过。
+- [x] T060 [US2] 允许新增重复记录后按标准目录补充多个记录字段；取消尚未持久化的记录时只移除本地草稿，不向服务发送未知删除请求。 per FR-003/FR-004/US2 AC5；记录编辑器测试覆盖标准目录字段和草稿取消。
+- [x] T061 [US3] 为首次读取和失败的保存、导出、删除操作提供可操作的重试或人工处理入口，并在元数据中显示字段类型与自定义标记。 per FR-018/US3 AC5；读取/保存/导出/删除失败路径均提供重试或人工处理反馈。

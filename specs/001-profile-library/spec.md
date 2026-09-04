@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-02
 
-**Status**: Ready for implementation
+**Status**: Implemented — corrective review in progress
 
 **Input**: User description: “建立一个本地优先的简历资料库，支持用户手动录入、编辑、查看和删除标准字段及简单自定义字段；资料默认加密保存在本地，敏感字段需要确认，后续供文档解析和网页填写功能使用。”
 

@@ -1,14 +1,18 @@
 import type { FieldDefinition, FieldType } from "../profileClient";
 
+type StandardFieldScope = "global" | "website" | "application";
+
 interface StandardFieldEditorProps {
   definitions: FieldDefinition[];
   fieldId: string;
   value: string;
+  scope: StandardFieldScope;
   scopeContext: string;
   saving: boolean;
   error: string | null;
   onFieldIdChange: (value: string) => void;
   onValueChange: (value: string) => void;
+  onScopeChange: (value: StandardFieldScope) => void;
   onScopeContextChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -25,17 +29,18 @@ export function StandardFieldEditor2({
   definitions,
   fieldId,
   value,
+  scope,
   scopeContext,
   saving,
   error,
   onFieldIdChange,
   onValueChange,
+  onScopeChange,
   onScopeContextChange,
   onSave,
   onCancel,
 }: StandardFieldEditorProps) {
   const selected = definitions.find((definition) => definition.id === fieldId);
-  const scope = selected?.allowed_scopes[0] ?? "global";
   return (
     <section aria-labelledby="standard-field-title">
       <h2 id="standard-field-title">添加标准字段</h2>
@@ -52,7 +57,8 @@ export function StandardFieldEditor2({
             {(selected.options ?? []).map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}
           </select>
         ) : selected?.field_type === "boolean" ? (
-          <select id="standard-field-value" aria-label="字段值" value={value || "false"} onChange={(event) => onValueChange(event.target.value)} disabled={!selected}>
+          <select id="standard-field-value" aria-label="字段值" value={value} onChange={(event) => onValueChange(event.target.value)} disabled={!selected}>
+            <option value="">请选择</option>
             <option value="true">是</option>
             <option value="false">否</option>
           </select>
@@ -61,6 +67,22 @@ export function StandardFieldEditor2({
         )}
       </label>
       {selected?.field_type === "multivalue" ? <p>多值字段请用逗号分隔。</p> : null}
+      {selected && selected.allowed_scopes.length > 1 ? (
+        <label htmlFor="standard-field-scope">使用范围
+          <select
+            id="standard-field-scope"
+            aria-label="使用范围"
+            value={scope}
+            onChange={(event) => onScopeChange(event.target.value as StandardFieldScope)}
+          >
+            {selected.allowed_scopes.map((allowedScope) => (
+              <option key={allowedScope} value={allowedScope}>
+                {allowedScope === "global" ? "全部资料" : allowedScope === "website" ? "指定网站" : "指定申请"}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {scope !== "global" ? (
         <label htmlFor="standard-field-scope-context">范围标识
           <input id="standard-field-scope-context" value={scopeContext} onChange={(event) => onScopeContextChange(event.target.value)} />
