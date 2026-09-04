@@ -44,6 +44,9 @@ def test_supported_types_return_safe_normalized_values(
         (FieldType.ENUM, "gamma"),
         (FieldType.MULTIVALUE, []),
         (FieldType.MULTIVALUE, ["alpha", "alpha"]),
+        (FieldType.MULTIVALUE, ["", "alpha"]),
+        (FieldType.MULTIVALUE, [None]),
+        (FieldType.MULTIVALUE, [1]),
     ],
 )
 def test_invalid_type_or_format_raises_privacy_safe_error(
@@ -90,3 +93,17 @@ def test_allowed_values_are_applied_to_enum_and_multivalue() -> None:
         validate_value(FieldType.ENUM, "gamma", rule=rule)
     with pytest.raises(InvalidFieldValueError):
         validate_value(FieldType.MULTIVALUE, ["alpha", "gamma"], rule=rule)
+
+
+def test_multivalue_items_are_trimmed_and_duplicate_after_normalization_is_rejected() -> None:
+    assert validate_value(FieldType.MULTIVALUE, [" alpha ", "beta"], options=["alpha", "beta"]) == [
+        "alpha",
+        "beta",
+    ]
+    with pytest.raises(InvalidFieldValueError):
+        validate_value(FieldType.MULTIVALUE, ["alpha", " alpha "], options=["alpha"])
+
+
+def test_huge_integer_does_not_escape_as_overflow() -> None:
+    with pytest.raises(InvalidFieldValueError):
+        validate_value(FieldType.NUMBER, 10**1000)

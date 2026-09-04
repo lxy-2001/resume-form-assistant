@@ -170,3 +170,42 @@ def test_update_replaces_only_matching_scope_context(
         (Scope.WEBSITE, "jobs.example.invalid"): "shanghai",
         (Scope.WEBSITE, "other.example.invalid"): "beijing",
     }
+
+
+def test_definition_update_preserves_all_existing_scopes(
+    fake_profile_store: ProfileStore,
+) -> None:
+    service = ProfileService(fake_profile_store, profile_id=PROFILE_ID)
+    definition = _definition()
+    created = service.create_custom_field(
+        PROFILE_ID,
+        expected_profile_version=0,
+        definition=definition,
+        value="beijing",
+        scope=Scope.GLOBAL,
+        user_confirmed=True,
+    )
+    with_website = service.update_custom_field(
+        PROFILE_ID,
+        expected_profile_version=created.profile_version,
+        field_id=definition.id,
+        value="shanghai",
+        scope=Scope.WEBSITE,
+        scope_context="jobs.example.invalid",
+        user_confirmed=True,
+    )
+
+    revised = definition.model_copy(update={"label": "Scope-aware city (updated)"})
+    updated = service.upsert_extended(
+        PROFILE_ID,
+        expected_profile_version=with_website.profile_version,
+        custom_field_definitions=[revised],
+        user_confirmed=True,
+    )
+
+    stored = next(item for item in updated.field_definitions if item.id == definition.id)
+    assert stored.allowed_scopes == definition.allowed_scopes
+    assert {(field.scope, field.scope_context): field.value for field in updated.fields} == {
+        (Scope.GLOBAL, None): "beijing",
+        (Scope.WEBSITE, "jobs.example.invalid"): "shanghai",
+    }

@@ -174,7 +174,25 @@ def test_destroy_removes_only_the_keyring_reference_and_is_idempotent() -> None:
     assert provider.destroy_key() is True
     assert provider.get_key() is None
     assert provider.destroy_key() is False
-    assert backend.delete_calls == 2
+    assert backend.delete_calls == 1
+
+
+def test_destroy_missing_reference_is_completed_without_delete_call() -> None:
+    class _MissingDeleteRaisesBackend(_MemoryBackend):
+        def delete_password(self, service: str, username: str) -> None:
+            del service, username
+            raise RuntimeError("delete of missing credential")
+
+    backend = _MissingDeleteRaisesBackend()
+    provider = KeyringKeyProvider(
+        service_name=SERVICE,
+        username=USERNAME,
+        backend=backend,
+        allowed_backend_types=(_MissingDeleteRaisesBackend,),
+    )
+
+    assert provider.destroy_key() is False
+    assert backend.delete_calls == 0
 
 
 def test_destroy_failure_is_reported_without_plaintext_fallback() -> None:

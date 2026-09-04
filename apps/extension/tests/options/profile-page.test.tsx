@@ -98,4 +98,36 @@ describe("ProfilePage", () => {
     expect(input).toHaveValue("Synthetic Test Person");
     expect(client.upsert).not.toHaveBeenCalled();
   });
+
+  it("offers a retry when the initial profile read fails", async () => {
+    const client = clientFor(emptySnapshot);
+    client.read.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(emptySnapshot);
+    render(<ProfilePage client={client} profileId={emptySnapshot.profile_id} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/读取失败/);
+    fireEvent.click(screen.getByRole("button", { name: "重试读取" }));
+
+    await waitFor(() => expect(client.read).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/暂无资料|资料为空/)).toBeInTheDocument();
+  });
+
+  it("reuses one mutation identity when a save is retried", async () => {
+    const client = clientFor(populatedSnapshot);
+    client.upsert
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce({ ...populatedSnapshot, profile_version: 2 });
+    render(<ProfilePage client={client} profileId={populatedSnapshot.profile_id} />);
+
+    const input = await screen.findByLabelText("姓名");
+    fireEvent.change(input, { target: { value: "Retry Synthetic Person" } });
+    fireEvent.click(screen.getByRole("button", { name: /保存/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/保存失败/);
+
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(client.upsert).toHaveBeenCalledTimes(2));
+    const first = client.upsert.mock.calls[0][0] as { request_id?: string; task_id?: string };
+    const second = client.upsert.mock.calls[1][0] as { request_id?: string; task_id?: string };
+    expect(second.request_id).toBe(first.request_id);
+    expect(second.task_id).toBe(first.task_id);
+  });
 });

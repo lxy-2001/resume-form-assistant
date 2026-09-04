@@ -3,6 +3,9 @@ export type CustomFieldEditorScope = "global" | "website" | "application";
 export type CustomFieldEditorSensitivity = "normal" | "sensitive" | "highly_sensitive";
 
 interface CustomFieldEditorProps {
+  title?: string;
+  submitLabel?: string;
+  valueRequired?: boolean;
   label: string;
   type: CustomFieldEditorType;
   value: string;
@@ -24,6 +27,9 @@ interface CustomFieldEditorProps {
 }
 
 export function CustomFieldEditor({
+  title = "新增自定义字段",
+  submitLabel = "确认添加",
+  valueRequired = true,
   label,
   type,
   value,
@@ -45,7 +51,7 @@ export function CustomFieldEditor({
 }: CustomFieldEditorProps) {
   return (
     <section aria-labelledby="custom-field-title">
-      <h2 id="custom-field-title">新增自定义字段</h2>
+      <h2 id="custom-field-title">{title}</h2>
       <label htmlFor="custom-field-label">字段名称
         <input id="custom-field-label" value={label} onChange={(event) => onLabelChange(event.target.value)} />
       </label>
@@ -61,14 +67,15 @@ export function CustomFieldEditor({
       </label>
       {type === "boolean" ? (
         <label htmlFor="custom-field-value">字段值
-          <select id="custom-field-value" aria-label="字段值" value={value || "false"} onChange={(event) => onValueChange(event.target.value)}>
+          <select id="custom-field-value" aria-label="字段值" value={value} onChange={(event) => onValueChange(event.target.value)} aria-required={valueRequired}>
+            <option value="">请选择</option>
             <option value="true">是</option>
             <option value="false">否</option>
           </select>
         </label>
       ) : (
         <label htmlFor="custom-field-value">字段值
-          <input id="custom-field-value" type={type === "number" ? "number" : "text"} value={value} onChange={(event) => onValueChange(event.target.value)} />
+          <input id="custom-field-value" type={type === "number" ? "number" : "text"} value={value} onChange={(event) => onValueChange(event.target.value)} aria-required={valueRequired} />
         </label>
       )}
       {(type === "enum" || type === "multivalue") ? (
@@ -97,7 +104,7 @@ export function CustomFieldEditor({
       </label>
       <p>保存自定义字段前需要你的明确确认；保存后可在资料列表中继续编辑。</p>
       {error ? <p role="alert">{error}</p> : null}
-      <button type="button" onClick={onSave} disabled={saving}>{saving ? "保存中…" : "确认添加"}</button>
+      <button type="button" onClick={onSave} disabled={saving}>{saving ? "保存中…" : submitLabel}</button>
       <button type="button" onClick={onCancel} disabled={saving}>取消</button>
     </section>
   );

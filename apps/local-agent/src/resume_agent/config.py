@@ -8,7 +8,7 @@ data root.
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from ipaddress import ip_address
 from pathlib import Path
@@ -20,6 +20,7 @@ DEFAULT_REQUEST_LIMIT = 1_048_576
 MAX_REQUEST_LIMIT = 16 * 1024 * 1024
 DEFAULT_APP_NAME = "resume-agent"
 DEFAULT_NAMESPACE = "resume_agent"
+DEFAULT_ALLOWED_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
 
 
 def _normalize_root(value: str | Path) -> Path:
@@ -42,6 +43,37 @@ def _validate_host(value: str) -> str:
     if not address.is_loopback:
         raise ValueError("host must be loopback-only")
     return host
+
+
+def _normalize_origins(value: object) -> tuple[str, ...]:
+    if value is None:
+        return DEFAULT_ALLOWED_ORIGINS
+    values: tuple[object, ...]
+    if isinstance(value, str):
+        values = (value,)
+    else:
+        if not isinstance(value, Iterable):
+            raise TypeError("allowed_origins must be an iterable of strings")
+        try:
+            values = tuple(value)
+        except TypeError as exc:
+            raise ValueError("allowed_origins must be an iterable of strings") from exc
+    result: list[str] = []
+    for origin in values:
+        if not isinstance(origin, str):
+            raise TypeError("allowed_origins must contain only strings")
+        # Origins are security-sensitive identifiers. Do not silently trim a
+        # value supplied by configuration; malformed whitespace must be rejected.
+        if origin != origin.strip():
+            raise ValueError("allowed_origins must contain exact origins")
+        normalized = origin
+        if not normalized or "*" in normalized or any(char.isspace() for char in normalized):
+            raise ValueError("allowed_origins must contain exact origins")
+        if len(normalized) > 256:
+            raise ValueError("allowed origin is too long")
+        if normalized not in result:
+            result.append(normalized)
+    return tuple(result)
 
 
 def _has_parent_component(value: str | Path) -> bool:
@@ -69,6 +101,7 @@ class AppConfig:
     request_limit: int = DEFAULT_REQUEST_LIMIT
     app_name: str = DEFAULT_APP_NAME
     namespace: str = DEFAULT_NAMESPACE
+    allowed_origins: tuple[str, ...] = DEFAULT_ALLOWED_ORIGINS
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data_root", _normalize_root(self.data_root))
@@ -90,6 +123,7 @@ class AppConfig:
             if not value:
                 raise ValueError(f"{field_name} must not be empty")
             object.__setattr__(self, field_name, value)
+        object.__setattr__(self, "allowed_origins", _normalize_origins(self.allowed_origins))
 
     @property
     def root(self) -> Path:
@@ -125,6 +159,7 @@ class AppConfig:
             "host": self.host,
             "port": self.port,
             "request_limit": self.request_limit,
+            "allowed_origins": list(self.allowed_origins),
         }
         if include_data_root:
             result["data_root"] = str(self.data_root)

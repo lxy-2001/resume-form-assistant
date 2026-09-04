@@ -20,7 +20,15 @@ const snapshot: ProfileSnapshot = {
     ],
     confirmed: true, created_at: timestamp, updated_at: timestamp,
   }],
-  field_definitions: [], created_at: timestamp, updated_at: timestamp,
+  field_definitions: [{
+    id: "education.major",
+    label: "专业",
+    field_type: "text",
+    default_sensitivity: "normal",
+    requires_confirmation: false,
+    is_custom: false,
+    allowed_scopes: ["global"],
+  }], created_at: timestamp, updated_at: timestamp,
 };
 
 describe("RecordEditor typed controls and metadata", () => {
@@ -44,5 +52,26 @@ describe("RecordEditor typed controls and metadata", () => {
     expect(screen.getAllByText(/敏感级别：普通/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/使用范围：全部资料/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/更新时间：2099-01-01/).length).toBeGreaterThan(0);
+  });
+
+  it("adds another standard field to a repeatable record before saving", async () => {
+    const client: ProfileClient & { read: ReturnType<typeof vi.fn>; upsert: ReturnType<typeof vi.fn> } = {
+      read: vi.fn().mockResolvedValue(snapshot),
+      upsert: vi.fn().mockResolvedValue(snapshot),
+    };
+    render(<ProfilePage client={client} profileId={snapshot.profile_id} />);
+    fireEvent.click(await screen.findByRole("button", { name: /编辑/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: "新增经历字段" }), {
+      target: { value: "education.major" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "添加经历字段" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "专业" }), {
+      target: { value: "计算机科学" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /保存记录/ }));
+    await waitFor(() => expect(client.upsert).toHaveBeenCalledTimes(1));
+    expect(client.upsert.mock.calls[0][0].records[0].fields).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "education.major", value: "计算机科学" })]),
+    );
   });
 });

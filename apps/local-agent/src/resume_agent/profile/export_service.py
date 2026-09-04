@@ -18,10 +18,17 @@ from pathlib import Path
 from typing import Any
 
 from resume_agent.profile.errors import ExportFailedError, InvalidProfileSelectionError
-from resume_agent.profile.models import FieldValue, ProfileSnapshot, RepeatableRecord, Scope
+from resume_agent.profile.models import (
+    FieldValue,
+    ProfileSnapshot,
+    RepeatableRecord,
+    Scope,
+    is_contract_id,
+)
 
 _URI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
 _NETWORK_PREFIXES = (r"\\\\", "//")
+_FIELD_SELECTOR_KEYS = {"id", "scope", "scope_context"}
 
 
 def _selection_error(reason: str) -> InvalidProfileSelectionError:
@@ -31,7 +38,7 @@ def _selection_error(reason: str) -> InvalidProfileSelectionError:
 def _selected_kind(selection: Mapping[str, Any]) -> tuple[str, Any]:
     if not isinstance(selection, Mapping):
         raise _selection_error("selection")
-    allowed = {"field_ids", "record_ids", "scopes", "all_profile_data"}
+    allowed = {"field_ids", "field_values", "record_ids", "scopes", "all_profile_data"}
     if set(selection) - allowed:
         raise _selection_error("selection_keys")
     present = [key for key in allowed if key in selection]
@@ -43,6 +50,39 @@ def _selected_kind(selection: Mapping[str, Any]) -> tuple[str, Any]:
         if value is not True:
             raise _selection_error("all_profile_data")
         return kind, value
+    if kind == "field_values":
+        if not isinstance(value, list) or not value:
+            raise _selection_error("selection_empty")
+        selectors: list[tuple[str, Scope, str | None]] = []
+        seen: set[tuple[str, Scope, str | None]] = set()
+        for raw in value:
+            if not isinstance(raw, Mapping):
+                raise _selection_error("field_value_selector")
+            if set(raw) - _FIELD_SELECTOR_KEYS or "id" not in raw or "scope" not in raw:
+                raise _selection_error("field_value_selector")
+            field_id = raw.get("id")
+            if not isinstance(field_id, str) or not is_contract_id(field_id):
+                raise _selection_error("field_value_selector_id")
+            try:
+                raw_scope = raw.get("scope")
+                if not isinstance(raw_scope, (str, Scope)):
+                    raise TypeError("scope")
+                scope = raw_scope if isinstance(raw_scope, Scope) else Scope(raw_scope)
+            except (TypeError, ValueError) as exc:
+                raise _selection_error("field_value_selector_scope") from exc
+            context = raw.get("scope_context")
+            if scope is Scope.GLOBAL:
+                if "scope_context" in raw:
+                    raise _selection_error("global_field_value_selector_context")
+                context = None
+            elif not is_contract_id(context):
+                raise _selection_error("field_value_selector_context")
+            selector = (field_id, scope, context)
+            if selector in seen:
+                raise _selection_error("duplicate_field_value_selector")
+            seen.add(selector)
+            selectors.append(selector)
+        return kind, selectors
     if not isinstance(value, list) or not value:
         raise _selection_error("selection_empty")
     try:
@@ -79,7 +119,7 @@ def _local_destination(
     return path
 
 
-def _write_atomic(path: Path, payload: bytes) -> None:
+def _write_atomic(path: Path, payload: bytes, *, overwrite_existing: bool) -> None:
     temporary: Path | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,8 +134,16 @@ def _write_atomic(path: Path, payload: bytes) -> None:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        temporary = None
+        if overwrite_existing:
+            os.replace(temporary, path)
+            temporary = None
+        else:
+            # A hard-link create is an atomic no-clobber install: if another
+            # process creates the destination after the preflight existence
+            # check, the link fails instead of replacing that file.
+            os.link(temporary, path)
+            temporary.unlink(missing_ok=True)
+            temporary = None
         try:
             directory_fd = os.open(path.parent, os.O_RDONLY)
         except OSError:
@@ -152,12 +200,44 @@ class ProfileExportService:
             selected_records = all_records
         elif kind == "field_ids":
             ids = set(selected)
+            available_ids = {field.id for field in all_fields} | {
+                field.id for record in all_records for field in record.fields
+            }
+            if not ids.issubset(available_ids):
+                raise _selection_error("unknown_field_id")
             selected_fields = [field for field in all_fields if field.id in ids]
             selected_records = [
                 record for record in all_records if any(field.id in ids for field in record.fields)
             ]
+        elif kind == "field_values":
+            selected_keys = set(selected)
+            available_keys = {
+                (field.id, field.scope, field.scope_context) for field in all_fields
+            } | {
+                (field.id, field.scope, field.scope_context)
+                for record in all_records
+                for field in record.fields
+            }
+            if not selected_keys.issubset(available_keys):
+                raise _selection_error("unknown_field_value_selector")
+            selected_fields = [
+                field
+                for field in all_fields
+                if (field.id, field.scope, field.scope_context) in selected_keys
+            ]
+            selected_records = [
+                record
+                for record in all_records
+                if any(
+                    (field.id, field.scope, field.scope_context) in selected_keys
+                    for field in record.fields
+                )
+            ]
         elif kind == "record_ids":
             ids = set(selected)
+            available_ids = {record.record_id for record in all_records}
+            if not ids.issubset(available_ids):
+                raise _selection_error("unknown_record_id")
             selected_fields = []
             selected_records = [record for record in all_records if record.record_id in ids]
         else:
@@ -170,6 +250,7 @@ class ProfileExportService:
             ]
 
         selected_field_ids = {field.id for field in selected_fields}
+        selected_key_set = set(selected) if kind == "field_values" else set()
         selected_records_out: list[dict[str, Any]] = []
         record_ids: list[str] = []
         for record in selected_records:
@@ -177,13 +258,20 @@ class ProfileExportService:
                 record_fields = list(record.fields)
             elif kind == "field_ids":
                 record_fields = [field for field in record.fields if field.id in set(selected)]
+            elif kind == "field_values":
+                record_fields = [
+                    field
+                    for field in record.fields
+                    if (field.id, field.scope, field.scope_context) in selected_key_set
+                ]
             else:
                 record_fields = [
                     field for field in record.fields if field.scope.value in set(selected)
                 ]
             if not record_fields:
                 continue
-            selected_records_out.append(_record_dict(record, record_fields))
+            record_payload = _record_dict(record, record_fields)
+            selected_records_out.append(record_payload)
             record_ids.append(record.record_id)
             selected_field_ids.update(field.id for field in record_fields)
 
@@ -204,14 +292,16 @@ class ProfileExportService:
         payload = json.dumps(
             output, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         ).encode("utf-8")
-        _write_atomic(path, payload)
+        _write_atomic(path, payload, overwrite_existing=overwrite_existing)
         exported_scopes: list[str] = []
-        for field in [
-            *selected_fields,
-            *[field for record in selected_records for field in record.fields],
-        ]:
+        for field in selected_fields:
             if field.scope.value not in exported_scopes:
                 exported_scopes.append(field.scope.value)
+        for record_payload in selected_records_out:
+            for field in record_payload["fields"]:
+                scope = field["scope"]
+                if scope not in exported_scopes:
+                    exported_scopes.append(scope)
         return {
             "profile_id": snapshot.profile_id,
             "profile_version": snapshot.profile_version,

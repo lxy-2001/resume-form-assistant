@@ -18,6 +18,19 @@ class ProfileStore(Protocol):
 
 
 @runtime_checkable
+class ProfileDataDeletionStore(Protocol):
+    """Optional explicit seam for deleting a snapshot and its key material.
+
+    Implementations that own encryption metadata must expose this operation so
+    the profile service never has to inspect private attributes such as a
+    ``key_provider``. The method is idempotent and either completes all cleanup
+    or raises a typed cleanup error.
+    """
+
+    def delete_profile_data(self) -> None: ...
+
+
+@runtime_checkable
 class AtomicWriter(Protocol):
     """Atomic bytes writer seam; implementations may raise StorageError."""
 

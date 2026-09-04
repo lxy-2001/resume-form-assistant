@@ -82,6 +82,23 @@ class _MalformedKeyProvider:
         return False
 
 
+class _ProvisioningOnlyKeyProvider:
+    """Synthetic provider that would create a replacement key if called."""
+
+    def __init__(self) -> None:
+        self.provision_calls = 0
+
+    def get_key(self) -> None:
+        return None
+
+    def provision_key(self) -> bytes:
+        self.provision_calls += 1
+        return b"n" * 32
+
+    def destroy_key(self) -> bool:
+        return False
+
+
 def test_uninitialized_store_reads_none_and_delete_is_idempotent(
     tmp_path: Path, fake_key_provider: object
 ) -> None:
@@ -120,6 +137,22 @@ def test_missing_or_malformed_key_fails_closed_without_creating_snapshot(tmp_pat
         with pytest.raises(StorageUnavailableError):
             store.write(_snapshot())
         assert path.exists() is False
+
+
+def test_existing_snapshot_with_missing_key_fails_closed_without_replacing_file(
+    tmp_path: Path,
+    fake_key_provider: object,
+) -> None:
+    path = tmp_path / "profile.enc.json"
+    EncryptedJsonProfileStore(path, fake_key_provider).write(_snapshot())
+    before = path.read_bytes()
+    missing_key = _ProvisioningOnlyKeyProvider()
+
+    with pytest.raises(StorageUnavailableError):
+        EncryptedJsonProfileStore(path, missing_key).write(_snapshot("Replacement", version=2))
+
+    assert path.read_bytes() == before
+    assert missing_key.provision_calls == 0
 
 
 def test_wrong_key_and_tampered_ciphertext_raise_recovery_error(

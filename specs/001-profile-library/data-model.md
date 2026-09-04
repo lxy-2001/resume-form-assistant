@@ -64,7 +64,10 @@
 | sensitivity | 继承定义或显式提升，不得降低高风险级别 |
 | updated_at | 每次成功写入更新 |
 
-同一 field_id 在同一 scope 下只能有一个当前值。不同 scope 的值并存且必须显式展示，不能静默合并。
+当前值的唯一身份是 `(field_id, scope, scope_context)`：同一字段可以在不同网站或申请上下文中并存，
+但同一身份只能有一个当前值。不同范围的值必须显式展示，不能静默合并。生命周期请求中的
+`field_ids` 表示按字段 ID 删除或导出所有范围；需要只处理一个范围时使用精确的 `field_values`
+选择器（`id`、`scope`，以及 website/application 所需的 `scope_context`）。
 
 ### RepeatableRecord
 
@@ -88,7 +91,7 @@
 | 属性 | 约束 |
 | --- | --- |
 | profile_id / expected_profile_version | 资料身份和读取一致性版本 |
-| selected_scopes / selected_ids | 明确导出范围，对应请求的 `selection` |
+| selected_scopes / selected_ids / selected_field_values | 明确导出范围，对应请求的 `selection`；同一字段跨范围时使用精确值选择器 |
 | user_confirmed | 导出前必须为 true |
 | destination | 用户选择的本地位置，不由服务上传 |
 | result | 成功由响应的 `task_state=completed`、`status=written` 表示；失败使用 `ErrorResponse`；用户在请求发出前取消则不产生变更 |
@@ -141,4 +144,4 @@
 
 ## Mapping to Shared Contracts
 
-F001 使用共享契约中的 ProfileField、FieldType、Scope、Sensitivity、Source、ValidationRule 和确认字段。写入、读取、导出和删除分别映射到已合并的 `ProfileUpsertRequest/Response`、`ProfileReadRequest/Response`、`ProfileExportRequest/Response` 和 `ProfileDeleteRequest/Response`。领域对象不直接暴露加密 envelope。
+F001 使用共享契约中的 ProfileField、FieldType、Scope、Sensitivity、Source、ValidationRule 和确认字段。写入、读取、导出和删除分别映射到已合并的 `ProfileUpsertRequest/Response`、`ProfileReadRequest/Response`、`ProfileExportRequest/Response` 和 `ProfileDeleteRequest/Response`。精确字段值选择器的规范只维护在 `packages/contracts/v0.1/contracts.schema.json`；领域对象不直接暴露加密 envelope。

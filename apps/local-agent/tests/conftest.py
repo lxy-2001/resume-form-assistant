@@ -97,6 +97,11 @@ class FakeProfileStore:
         self.delete_calls += 1
         self.snapshot = None
 
+    def delete_profile_data(self) -> None:
+        """Expose the explicit all-data cleanup seam without keyring I/O."""
+
+        self.delete()
+
 
 @pytest.fixture
 def data_root(tmp_path: Path) -> Path:

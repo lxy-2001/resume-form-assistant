@@ -28,6 +28,7 @@ export interface ProfileField {
   is_custom?: boolean;
   options?: Array<{ value: ProfileValue; label: string }>;
   aliases?: string[];
+  validation?: { format?: string; pattern?: string; min_length?: number; max_length?: number; minimum?: number; maximum?: number; allowed_values?: ProfileValue[] };
 }
 
 /**
@@ -48,7 +49,10 @@ export interface FieldDefinition {
   is_custom: boolean;
   allowed_scopes: Array<"global" | "website" | "application">;
   options?: Array<{ value: ProfileValue; label: string }>;
+  aliases?: string[];
   validation?: { format?: string; pattern?: string; min_length?: number; max_length?: number; minimum?: number; maximum?: number; allowed_values?: ProfileValue[] };
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type RecordType = "education" | "work" | "internship" | "project";
@@ -74,6 +78,9 @@ export interface ProfileSnapshot {
 }
 
 export interface ProfileUpsertInput {
+  /** Reuse these IDs when retrying the same logical mutation. */
+  request_id?: string;
+  task_id?: string;
   profile_id: string;
   expected_profile_version: number;
   user_confirmed: true;
@@ -86,13 +93,22 @@ export interface ProfileUpsertInput {
   record_order?: string[];
   delete_field_ids?: string[];
 }
+export interface ProfileFieldSelector {
+  id: string;
+  scope: "global" | "website" | "application";
+  scope_context?: string;
+}
 export type ProfileDeleteSelection =
   | { field_ids: string[] }
+  | { field_values: ProfileFieldSelector[] }
   | { record_ids: string[] }
   | { custom_field_definition_ids: string[] }
   | { delete_all: true };
 
 export interface ProfileDeleteInput {
+  /** Reuse these IDs when retrying the same logical mutation. */
+  request_id?: string;
+  task_id?: string;
   profile_id: string;
   expected_profile_version: number;
   user_confirmed: true;
@@ -113,11 +129,15 @@ export interface ProfileDeleteResult {
 
 export type ProfileExportSelection =
   | { field_ids: string[] }
+  | { field_values: ProfileFieldSelector[] }
   | { record_ids: string[] }
   | { scopes: Array<"global" | "website" | "application"> }
   | { all_profile_data: true };
 
 export interface ProfileExportInput {
+  /** Reuse these IDs when retrying the same logical mutation. */
+  request_id?: string;
+  task_id?: string;
   profile_id: string;
   expected_profile_version: number;
   user_confirmed: true;
@@ -155,21 +175,92 @@ export interface ProfileClient {
   export?(input: ProfileExportInput): Promise<ProfileExportResult>;
 }
 
-export class HttpProfileClient implements ProfileClient {
+export class ProfileClientError extends Error {
+  readonly code?: string;
+  readonly retryable: boolean;
+  readonly details?: Record<string, unknown>;
+
   constructor(
-    private readonly baseUrl = "http://127.0.0.1:8765",
-    private readonly requestId = "extension-profile-request",
-    private readonly taskId = "extension-profile-task",
-  ) {}
+    message: string,
+    options: { code?: string; retryable?: boolean; details?: Record<string, unknown> } = {},
+  ) {
+    super(message);
+    this.name = "ProfileClientError";
+    this.code = options.code;
+    this.retryable = options.retryable ?? false;
+    this.details = options.details;
+  }
+}
+
+/** A mutation was accepted, but the follow-up snapshot read failed. */
+export class ProfileRefreshError extends Error {
+  readonly mutationCommitted = true;
+
+  constructor(cause?: unknown) {
+    super("profile mutation committed but refresh failed");
+    this.name = "ProfileRefreshError";
+    this.cause = cause;
+  }
+
+  readonly cause?: unknown;
+}
+
+function assertLocalAgentUrl(value: string): string {
+  if (typeof value !== "string" || !value || value !== value.trim()) {
+    throw new TypeError("baseUrl must be an exact loopback URL");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch (cause) {
+    throw new TypeError("baseUrl must be an exact loopback URL", { cause });
+  }
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    parsed.protocol !== "http:"
+    || !["127.0.0.1", "localhost", "::1"].includes(hostname)
+    || parsed.username
+    || parsed.password
+    || parsed.search
+    || parsed.hash
+    || (parsed.pathname !== "" && parsed.pathname !== "/")
+  ) {
+    throw new TypeError("baseUrl must be an HTTP loopback URL without credentials or a path");
+  }
+  return parsed.origin;
+}
+
+export class HttpProfileClient implements ProfileClient {
+  private sequence = 0;
+
+  constructor(
+    baseUrl = "http://127.0.0.1:8765",
+    private readonly requestPrefix = "extension-profile-request",
+    private readonly taskPrefix = "extension-profile-task",
+  ) {
+    this.baseUrl = assertLocalAgentUrl(baseUrl);
+  }
+
+  private readonly baseUrl: string;
+
+  private nextIdentity(operation: string): { request_id: string; task_id: string } {
+    const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${this.sequence++}`;
+    return {
+      request_id: `${this.requestPrefix}-${operation}-${suffix}`,
+      task_id: `${this.taskPrefix}-${operation}-${suffix}`,
+    };
+  }
 
   async read(profileId: string): Promise<ProfileSnapshot> {
+    const identity = this.nextIdentity("read");
     const response = await fetch(`${this.baseUrl}/v0/profile/read`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         schema_version: "0.1",
-        request_id: this.requestId,
-        task_id: this.taskId,
+        ...identity,
         operation: "profile.read",
         profile_id: profileId,
       }),
@@ -178,29 +269,33 @@ export class HttpProfileClient implements ProfileClient {
   }
 
   async upsert(input: ProfileUpsertInput): Promise<ProfileSnapshot> {
+    const identity = this.identityFor("upsert", input);
     const response = await fetch(`${this.baseUrl}/v0/profile/upsert`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         schema_version: "0.1",
-        request_id: this.requestId,
-        task_id: this.taskId,
+        ...identity,
         operation: "profile.upsert",
         ...input,
       }),
     });
     await this.parseResponse<Record<string, unknown>>(response, "profile update failed");
-    return this.read(input.profile_id);
+    try {
+      return await this.read(input.profile_id);
+    } catch (error) {
+      throw new ProfileRefreshError(error);
+    }
   }
 
   async delete(input: ProfileDeleteInput): Promise<ProfileDeleteResult> {
+    const identity = this.identityFor("delete", input);
     const response = await fetch(`${this.baseUrl}/v0/profile/delete`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         schema_version: "0.1",
-        request_id: this.requestId,
-        task_id: this.taskId,
+        ...identity,
         operation: "profile.delete",
         ...input,
       }),
@@ -209,13 +304,13 @@ export class HttpProfileClient implements ProfileClient {
   }
 
   async export(input: ProfileExportInput): Promise<ProfileExportResult> {
+    const identity = this.identityFor("export", input);
     const response = await fetch(`${this.baseUrl}/v0/profile/export`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         schema_version: "0.1",
-        request_id: this.requestId,
-        task_id: this.taskId,
+        ...identity,
         operation: "profile.export",
         ...input,
       }),
@@ -223,11 +318,33 @@ export class HttpProfileClient implements ProfileClient {
     return this.parseResponse<ProfileExportResult>(response, "profile export failed");
   }
 
+  private identityFor(
+    operation: string,
+    input: { request_id?: string; task_id?: string },
+  ): { request_id: string; task_id: string } {
+    const generated = this.nextIdentity(operation);
+    return {
+      request_id: input.request_id ?? generated.request_id,
+      task_id: input.task_id ?? generated.task_id,
+    };
+  }
+
 
   private async parseResponse<T>(response: Response, fallback: string): Promise<T> {
-    const payload = (await response.json()) as { profile?: T; error?: { message?: string } };
+    let payload: { profile?: T; error?: { code?: string; message?: string; retryable?: boolean; details?: Record<string, unknown> } };
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      // Do not retain or expose a parser exception; it may contain response
+      // fragments that are outside the redacted contract boundary.
+      throw new ProfileClientError(fallback, { code: "INVALID_FIELD_VALUE" });
+    }
     if (!response.ok) {
-      throw new Error(payload.error?.message ?? fallback);
+      throw new ProfileClientError(payload.error?.message ?? fallback, {
+        code: payload.error?.code,
+        retryable: payload.error?.retryable,
+        details: payload.error?.details,
+      });
     }
     return (payload.profile ?? payload) as T;
   }

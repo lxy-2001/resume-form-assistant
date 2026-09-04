@@ -1,10 +1,13 @@
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
+from conftest import FakeProfileStore
 from resume_agent.api.app import create_app
 from resume_agent.config import AppConfig
 from resume_agent.profile.errors import ProfileNotFoundError
+from resume_agent.profile.service import ProfileService
 
 
 def _client(
@@ -48,6 +51,67 @@ def test_accepts_explicit_origin_allowlist(tmp_path: Path) -> None:
     client = _client(tmp_path, allowed_origins={"chrome-extension://synthetic"})
     response = client.get("/health", headers={"origin": "chrome-extension://synthetic"})
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "origins", [["*"], [" http://localhost:5173"], ["https://evil.example bad"]]
+)
+def test_factory_rejects_wildcard_or_malformed_origins(tmp_path: Path, origins: list[str]) -> None:
+    with pytest.raises(ValueError, match="exact|wildcard|origin"):
+        create_app(AppConfig(tmp_path), allowed_origins=origins)
+
+
+def test_handles_extension_cors_preflight_for_exact_allowlisted_origin(tmp_path: Path) -> None:
+    client = _client(tmp_path, allowed_origins={"chrome-extension://synthetic"})
+    response = client.options(
+        "/v0/profile/read",
+        headers={
+            "origin": "chrome-extension://synthetic",
+            "access-control-request-method": "POST",
+            "access-control-request-headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 204
+    assert response.headers["access-control-allow-origin"] == "chrome-extension://synthetic"
+    assert "POST" in response.headers["access-control-allow-methods"]
+
+
+def test_malformed_profile_body_uses_shared_error_shape(tmp_path: Path) -> None:
+    service = ProfileService(FakeProfileStore(), profile_id="profile-synthetic-api")
+    client = TestClient(
+        create_app(AppConfig(tmp_path), profile_service=service),
+        client=("127.0.0.1", 1234),
+        raise_server_exceptions=False,
+    )
+    response = client.post(
+        "/v0/profile/read",
+        content=b'{"secret":"Synthetic Sensitive Value",',
+        headers={"content-type": "application/json", "x-operation": "profile.read"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["operation"] == "error"
+    assert payload["error"]["code"] == "INVALID_FIELD_VALUE"
+    assert payload["failed_operation"] == "profile.read"
+    assert "Synthetic Sensitive Value" not in response.text
+
+
+def test_missing_profile_body_uses_shared_error_shape(tmp_path: Path) -> None:
+    service = ProfileService(FakeProfileStore(), profile_id="profile-synthetic-api")
+    client = TestClient(
+        create_app(AppConfig(tmp_path), profile_service=service),
+        client=("127.0.0.1", 1234),
+        raise_server_exceptions=False,
+    )
+    response = client.post(
+        "/v0/profile/read",
+        headers={"x-operation": "profile.read"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_FIELD_VALUE"
 
 
 def test_rejects_oversize_declared_body_without_echoing_body(tmp_path: Path) -> None:

@@ -117,12 +117,14 @@ def _upsert_body(**changes: Any) -> dict[str, Any]:
         "expected_profile_version": 0,
         "user_confirmed": True,
         "mode": "merge",
-        "fields": [],
-        "records": [],
-        "custom_field_definitions": [],
     }
     body.update(changes)
-    return body
+    # Optional mutation arrays follow the v0.1 schema's minItems rule: an
+    # empty operation is represented by omitting the member, not by sending
+    # an explicit empty array.
+    return {
+        key: value for key, value in body.items() if not (isinstance(value, list) and not value)
+    }
 
 
 def test_upsert_accepts_repeatable_records_and_custom_definition(
@@ -199,6 +201,49 @@ def test_upsert_supports_record_order_and_individual_deletion(
     assert payload["profile_version"] == 2
     assert payload["deleted_record_ids"] == [second["record_id"]]
     assert payload["record_order"] == [first["record_id"]]
+
+
+def test_upsert_reports_fields_removed_with_custom_definition(
+    tmp_path: Path,
+    fake_profile_store: ProfileStore,
+) -> None:
+    """Deleting a definition also reports its persisted values as deleted."""
+
+    from resume_agent.profile.service import ProfileService
+
+    service = ProfileService(fake_profile_store, profile_id=PROFILE_ID)
+    definition = _custom_definition("custom.removed-with-definition")
+    field = _field(
+        definition["id"],
+        definition["label"],
+        "enum",
+        "beijing",
+        is_custom=True,
+        options=definition["options"],
+    )
+    created = _client(tmp_path, service).post(
+        "/v0/profile/upsert",
+        json=_upsert_body(
+            request_id="req-us2-definition-delete-create",
+            fields=[field],
+            custom_field_definitions=[definition],
+        ),
+    )
+    assert created.status_code == 200
+
+    response = _client(tmp_path, service).post(
+        "/v0/profile/upsert",
+        json=_upsert_body(
+            request_id="req-us2-definition-delete",
+            expected_profile_version=1,
+            delete_custom_field_definition_ids=[definition["id"]],
+        ),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["deleted_field_ids"] == [definition["id"]]
+    assert payload["deleted_custom_field_definition_ids"] == [definition["id"]]
 
 
 def test_custom_definition_collision_returns_structured_error_without_mutation(

@@ -85,4 +85,85 @@ describe("ProfilePage standard field types and scope", () => {
       expect(client.upsert.mock.calls[0][0].fields[0].value).toEqual(definition.field_type === "boolean" ? true : ["中文", "English"]);
     }
   });
+
+  it("uses type-aware controls when editing persisted top-level fields", async () => {
+    const snapshot: ProfileSnapshot = {
+      profile_id: "profile-synthetic-edit-types",
+      profile_version: 2,
+      is_empty: false,
+      fields: [
+        {
+          id: "person.gender",
+          label: "性别",
+          field_type: "enum",
+          value: "男",
+          scope: "global",
+          sensitivity: "normal",
+          requires_confirmation: false,
+          confirmed: true,
+          source: { kind: "manual" },
+          updated_at: timestamp,
+          options: [{ value: "男", label: "男" }, { value: "女", label: "女" }],
+        },
+        {
+          id: "application.willing_to_travel",
+          label: "是否接受出差",
+          field_type: "boolean",
+          value: true,
+          scope: "application",
+          scope_context: "application-synthetic",
+          sensitivity: "normal",
+          requires_confirmation: false,
+          confirmed: true,
+          source: { kind: "manual" },
+          updated_at: timestamp,
+        },
+      ],
+      records: [],
+      field_definitions: [],
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const client = clientFor(snapshot);
+    render(<ProfilePage client={client} profileId={snapshot.profile_id} />);
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "性别" }), {
+      target: { value: "女" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "是否接受出差" }), {
+      target: { value: "false" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^保存$/ }));
+
+    await waitFor(() => expect(client.upsert).toHaveBeenCalledTimes(1));
+    expect(client.upsert.mock.calls[0][0].fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "person.gender", value: "女" }),
+        expect.objectContaining({ id: "application.willing_to_travel", value: false }),
+      ]),
+    );
+  });
+
+  it("requires explicit confirmation before adding a sensitive standard field", async () => {
+    const snapshot = snapshotFor({
+      id: "person.id_number",
+      label: "证件号码",
+      field_type: "text",
+      default_sensitivity: "highly_sensitive",
+      requires_confirmation: true,
+      is_custom: false,
+      allowed_scopes: ["global"],
+    });
+    const client = clientFor(snapshot);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ProfilePage client={client} profileId={snapshot.profile_id} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /添加标准字段/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: /标准字段/ }), { target: { value: "person.id_number" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /字段值/ }), { target: { value: "SYNTHETIC-ID" } });
+    fireEvent.click(screen.getByRole("button", { name: /确认添加标准字段/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/取消敏感/);
+    expect(client.upsert).not.toHaveBeenCalled();
+  });
 });

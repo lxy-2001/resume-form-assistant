@@ -141,8 +141,13 @@ class KeyringKeyProvider:
     def destroy_key(self) -> bool:
         backend = self._checked_backend()
         raw = self._read_raw(backend)
+        if raw is None:
+            # Missing credentials are already in the desired state.  Some
+            # operating-system keyrings raise when asked to delete a missing
+            # entry, so do not issue a needless delete call.
+            return False
         try:
             backend.delete_password(self.service_name, self.username)
         except Exception as exc:
             raise StorageUnavailableError("OS keyring is unavailable") from exc
-        return raw is not None
+        return True

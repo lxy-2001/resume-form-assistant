@@ -1,6 +1,6 @@
 # F001 Contract Mapping: Profile Lifecycle
 
-**Status**: Ready for implementation
+**Status**: Implemented — corrective review in progress
 **Authority**: `packages/contracts/v0.1/contracts.schema.json` remains the only normative schema.
 **Upstream baseline**: shared-contracts PR #1, merged into `main` as `23b9d2b`.
 
@@ -104,7 +104,7 @@ content, keys or complete local absolute paths.
 - [x] `ProfileExportRequest` / `ProfileExportResponse` define local-only destination semantics.
 - [x] Contract tests cover version, confirmation, stale-version, scope and sensitive-field rules.
 - [x] Operation table, README and changelog were updated in shared-contracts PR #1.
-- [x] The merged baseline was verified on 2026-09-03: 55 contract tests passed.
+- [x] The merged baseline and corrective implementation were verified on 2026-09-04: 58 contract/privacy tests passed.
 
 F001 can now implement domain, storage, API and Options Page behavior without creating an ad-hoc
 cross-module message format.

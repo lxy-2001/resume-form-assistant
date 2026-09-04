@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
+  FieldDefinition,
   ProfileDeleteSelection,
   ProfileExportSelection,
   ProfileField,
+  ProfileFieldSelector,
+  ProfileRecord,
 } from "../profileClient";
 
 interface ProfileLifecycleDialogsProps {
   action: "export" | "delete" | null;
   fields: ProfileField[];
+  records: ProfileRecord[];
+  definitions: FieldDefinition[];
   saving: boolean;
   error: string | null;
   onClose: () => void;
@@ -16,9 +21,25 @@ interface ProfileLifecycleDialogsProps {
   onDelete: (selection: ProfileDeleteSelection) => void;
 }
 
+function fieldOptionValue(field: ProfileField): string {
+  return `field-value:${encodeURIComponent(JSON.stringify([
+    field.id,
+    field.scope,
+    field.scope_context ?? null,
+  ]))}`;
+}
+
+function scopeLabel(field: ProfileField): string {
+  const labels = { global: "全局", website: "网站", application: "本次申请" };
+  const label = labels[field.scope];
+  return field.scope_context ? `${label}：${field.scope_context}` : label;
+}
+
 export function ProfileLifecycleDialogs({
   action,
   fields,
+  records,
+  definitions,
   saving,
   error,
   onClose,
@@ -28,6 +49,22 @@ export function ProfileLifecycleDialogs({
   const [exportPath, setExportPath] = useState("C:\\resume-profile-export.json");
   const [exportScope, setExportScope] = useState("all");
   const [deleteScope, setDeleteScope] = useState("all");
+  const fieldSelectors = new Map<string, ProfileFieldSelector>(
+    fields.map((field) => [
+      fieldOptionValue(field),
+      {
+        id: field.id,
+        scope: field.scope,
+        ...(field.scope_context ? { scope_context: field.scope_context } : {}),
+      },
+    ]),
+  );
+
+  useEffect(() => {
+    if (action === "delete") {
+      setDeleteScope("all");
+    }
+  }, [action]);
 
   if (action === "export") {
     const selection: ProfileExportSelection = exportScope === "all"
@@ -68,9 +105,30 @@ export function ProfileLifecycleDialogs({
   }
 
   if (action === "delete") {
-    const selection: ProfileDeleteSelection = deleteScope === "all"
-      ? { delete_all: true }
-      : { field_ids: [deleteScope.slice("field:".length)] };
+    let selection: ProfileDeleteSelection;
+    if (deleteScope === "all") {
+      selection = { delete_all: true };
+    } else if (deleteScope.startsWith("record:")) {
+      selection = { record_ids: [deleteScope.slice("record:".length)] };
+    } else if (deleteScope.startsWith("custom:")) {
+      selection = {
+        custom_field_definition_ids: [deleteScope.slice("custom:".length)],
+      };
+    } else {
+      const fieldSelector = fieldSelectors.get(deleteScope);
+      selection = fieldSelector
+        ? { field_values: [fieldSelector] }
+        : { field_ids: [deleteScope.slice("field:".length)] };
+    }
+    const recordLabel = (record: ProfileRecord) => {
+      const labels: Record<string, string> = {
+        education: "教育经历",
+        work: "工作经历",
+        internship: "实习经历",
+        project: "项目经历",
+      };
+      return labels[record.record_type] ?? "经历";
+    };
     return (
       <section role="dialog" aria-labelledby="profile-delete-title" aria-modal="true">
         <h2 id="profile-delete-title">删除资料</h2>
@@ -84,8 +142,18 @@ export function ProfileLifecycleDialogs({
         >
           <option value="all">全部资料</option>
           {fields.map((field) => (
-            <option key={`${field.id}-${field.scope}-${field.scope_context ?? ""}`} value={`field:${field.id}`}>
-              字段：{field.label}
+            <option key={fieldOptionValue(field)} value={fieldOptionValue(field)}>
+              字段：{field.label}（{scopeLabel(field)}）
+            </option>
+          ))}
+          {records.map((record) => (
+            <option key={record.record_id} value={`record:${record.record_id}`}>
+              {recordLabel(record)}：{record.record_id}
+            </option>
+          ))}
+          {definitions.filter((definition) => definition.is_custom).map((definition) => (
+            <option key={definition.id} value={`custom:${definition.id}`}>
+              自定义字段：{definition.label}
             </option>
           ))}
         </select>
