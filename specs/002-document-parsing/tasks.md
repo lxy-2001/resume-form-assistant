@@ -43,5 +43,5 @@
 - [x] T027 更新本地服务和扩展 README 的导入、OCR、隐私和失败处理说明。
 - [x] T028 运行 `specs/002-document-parsing/quickstart.md` 全部场景并记录结果。
 - [x] T029 运行本地服务测试、扩展测试、类型检查、Lint、构建、契约和隐私审计。
-- [ ] T030 执行 Converge/Analyze，修正规格、计划、任务与实现之间的遗漏。
-- [ ] T031 完成代码审查准备并创建 GitHub Pull Request，更新 Roadmap 状态。
+- [x] T030 执行 Converge/Analyze，核对并修正规格、计划、任务与实现之间的遗漏。
+- [x] T031 完成代码审查准备并创建 GitHub Pull Request，更新 Roadmap 状态（PR #5）。
