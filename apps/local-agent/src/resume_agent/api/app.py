@@ -71,6 +71,9 @@ def _error_payload(
         "profile.export",
         "profile.import.preview",
         "profile.import.confirm",
+        "profile.normalize.preview",
+        "profile.normalize.confirm",
+        "profile.normalize.cancel",
     }:
         payload["failed_operation"] = failed_operation
     return payload

@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-normalize-preview-001",
+  "task_id": "normalize-task-001",
+  "operation": "profile.normalize.preview.result",
+  "source_task_id": "import-task-001",
+  "profile_id": "default-profile",
+  "profile_version": 3,
+  "task_state": "awaiting_user_review",
+  "candidates": [{
+    "candidate_id": "normalize-task-001-contact-email-1",
+    "target_kind": "field",
+    "field_id": "contact.email",
+    "label": "邮箱",
+    "field_type": "email",
+    "original_value": "Example@Example.Test",
+    "normalized_value": "example@example.test",
+    "value": "example@example.test",
+    "source": {"kind": "import", "document_ref": "doc-001", "location": "page 1"},
+    "confidence": 0.99,
+    "status": "new",
+    "requires_confirmation": true,
+    "sensitivity": "normal",
+    "evidence": ["邮箱：Example@Example.Test"],
+    "issues": []
+  }],
+  "issues": [],
+  "model_used": false,
+  "remote_data_sent": false,
+  "consent_recorded": false
+}

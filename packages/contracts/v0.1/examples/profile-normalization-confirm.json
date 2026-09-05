@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "request_id": "req-normalize-confirm-001",
+  "task_id": "normalize-task-001",
+  "operation": "profile.normalize.confirm",
+  "profile_id": "default-profile",
+  "expected_profile_version": 3,
+  "decisions": [{
+    "candidate_id": "normalize-task-001-contact-email-1",
+    "decision": "accept",
+    "user_confirmed": true
+  }]
+}

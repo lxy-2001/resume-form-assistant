@@ -53,6 +53,11 @@ class ImportService:
             raise ValueError("import task has expired")
         return task
 
+    def get_task(self, task_id: str) -> ImportTask:
+        """Return a live import task for downstream review stages."""
+
+        return self._task(task_id)
+
     @staticmethod
     def _candidate(
         *,

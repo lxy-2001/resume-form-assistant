@@ -1,7 +1,7 @@
 # 智能简历填写助手 Roadmap
 
 - 更新日期：2026-09-05
-- 状态：M0 基础设施已完成，F001 已验收并合并；F002 已进入 PR 审阅阶段
+- 状态：M0 基础设施已完成，F001、F002 已验收并合并；下一步进入 F003 规格设计
 - 产品基线：`docs/product/product-brief-v1.md`
 - 开发规范：`AGENTS.md`、`.specify/memory/constitution.md`
 
@@ -57,8 +57,8 @@ Planned → Specifying → Implementing → Reviewing → Done
 | Feature | 状态 | 依赖 | 交付物 |
 | --- | --- | --- | --- |
 | F001 本地资料库：手动录入与编辑 | Done | F000A、共享接口 v0.1 | US1–US3 资料服务、加密存储、API、Options 页面、导出/删除和隐私检查已完成；235 项本地服务、33 项扩展及 58 项契约/隐私测试通过；PR #2 已合并，修正 PR #3 已合并 |
-| F002 文档解析：PDF/Word/OCR | Reviewing | F001 | 已完成 PDF/DOCX 本地解析、OCR 适配、候选预览、确认写入和 Options 交互；PR #5 等待审阅 |
-| F003 资料标准化与人工纠正 | Planned | F002 | Agent 归类、规则校验、合并和纠正流程 |
+| F002 文档解析：PDF/Word/OCR | Done | F001 | 已完成 PDF/DOCX 本地解析、OCR 适配、候选预览、确认写入和 Options 交互；PR #5 已合并（merge commit `fbc6e76`） |
+| F003 资料标准化与人工纠正 | Implementing | F002 | 已完成规格、契约、规则归一化、重复记录建议、确认 API 和 Options 审阅接入；剩余冲突合并增强、回归测试和 PR 审阅 |
 
 ### M2 浏览器页面识别
 
@@ -122,11 +122,12 @@ Planned → Specifying → Implementing → Reviewing → Done
 
 ## 当前重点与下一步
 
-当前阶段是 **M1，F001 已完成 US1–US3 实现、审阅和合并；F002 已进入 PR 审阅**。按顺序推进：
+当前阶段是 **M1，F001 和 F002 已完成实现、审阅和合并；F003 正在实现**。按顺序推进：
 1. 已创建 `feat/F001-profile-library` 分支；
 2. 已完成 F001 的 Specify、Clarify、Plan、Checklist、Tasks、Analyze；
 3. 共享生命周期契约 PR #1 已合并；F001 主 PR #2 已合并；审阅发现的问题已通过修正 PR #3 关闭；
-4. 本地 `main` 已同步到修正合并提交，Roadmap 和 F001 SDD 状态已更新为 Done；F002 已完成规格、计划、任务、实现和验证，PR #5 等待审阅。
+4. 本地 `main` 已同步到修正合并提交，Roadmap 和 F001 SDD 状态已更新为 Done；F002 已完成规格、计划、任务、实现和验证，PR #5 已合并；
+5. 从最新 `origin/main` 创建 `feat/F003-standardization`，已完成 F003 的 Specify、Plan、Checklist 和 Tasks，并进入实现与验证。
 
 ## 变更规则
 
