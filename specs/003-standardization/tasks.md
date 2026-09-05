@@ -37,9 +37,9 @@
 - [x] T016 [P] [US2] Add redacted multi-record segment fixtures and expected classifications in `apps/local-agent/tests/fixtures/normalization/records/`
 - [x] T017 [US2] Implement nearby-heading and source-order grouping in `apps/local-agent/src/resume_agent/normalization/records.py`
 - [x] T018 [US2] Implement record type classification with explicit `unknown` fallback and issues in `apps/local-agent/src/resume_agent/normalization/records.py`
-- [ ] T019 [US2] Implement existing-record comparison for new, unchanged, possible duplicate and conflict statuses in `apps/local-agent/src/resume_agent/normalization/merge.py`
-- [ ] T020 [US2] Add unit tests for record grouping, unknown type, duplicate overlap and field conflicts in `apps/local-agent/tests/unit/test_normalization_records.py`
-- [ ] T021 [US2] Add normalization preview integration tests for field and record candidates in `apps/local-agent/tests/contract/test_normalization_preview.py`
+- [x] T019 [US2] Implement existing-record comparison for new, unchanged, possible duplicate and conflict statuses in `apps/local-agent/src/resume_agent/normalization/merge.py`
+- [x] T020 [US2] Add unit tests for record grouping, unknown type, duplicate overlap and field conflicts in `apps/local-agent/tests/unit/test_normalization_records.py`
+- [x] T021 [US2] Add normalization preview integration tests for field and record candidates in `apps/local-agent/tests/contract/test_normalization_preview.py`
 
 ## Phase 5 — User Story 3: 人工纠正与确认写入
 
@@ -67,11 +67,11 @@
 ## Phase 7 — Options review and cross-cutting polish
 
 - [x] T031 [US3] Implement normalization review state, evidence, confidence, issue and conflict rendering in `apps/extension/src/options/components/ImportPanel.tsx`
-- [ ] T032 [US3] Implement keyboard-accessible edit, merge, accept, skip, reject and cancel controls in `apps/extension/src/options/components/NormalizationReview.tsx`
+- [x] T032 [US3] Implement keyboard-accessible edit, merge, accept, skip, reject and cancel controls in `apps/extension/src/options/components/NormalizationReview.tsx`
 - [x] T033 [US3] Add extension client/component tests for explicit decisions, correction payloads, cancellation and stale errors in `apps/extension/src/options/`
 - [x] T034 [P] Update `apps/local-agent/README.md`, `apps/extension/README.md`, `packages/contracts/v0.1/README.md` and `CHANGELOG.md` with F003 behavior and privacy boundaries
 - [x] T035 Run targeted and full verification: local-agent pytest, contract tests, Ruff, mypy, extension tests, TypeScript, ESLint and Vite build; record results in `specs/003-standardization/quickstart.md`
-- [ ] T036 Run `speckit-converge` and `speckit-analyze`, resolve all critical/high findings, and update this task list with any remaining bounded work
+- [x] T036 Run `speckit-converge` and `speckit-analyze`, resolve all critical/high findings, and update this task list with any remaining bounded work
 
 ## Dependencies and Execution Order
 
@@ -103,4 +103,3 @@ T001-T003 → T004-T009 →
 4. Add review UI, privacy/failure hardening, documentation and full verification.
 
 Total tasks: **36**.
-

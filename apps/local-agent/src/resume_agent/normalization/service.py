@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from resume_agent.imports.service import ImportService
+from resume_agent.normalization.merge import classify_record_status
 from resume_agent.normalization.models import (
     NormalizationTask,
     NormalizedCandidate,
@@ -86,7 +88,10 @@ class NormalizationService:
                 existing_value=current_value,
             )
             candidates.append(candidate)
-        records = group_record_candidates(tuple(candidates), identifier)
+        records = tuple(
+            replace(record, status=classify_record_status(record, current.records))
+            for record in group_record_candidates(tuple(candidates), identifier)
+        )
         task = NormalizationTask(
             task_id=identifier,
             source_task_id=source_task_id,
