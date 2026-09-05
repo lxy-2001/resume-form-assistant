@@ -39,3 +39,5 @@
 
 These changes are part of the not-yet-released v0.1 baseline in PR #1. Once v0.1 is released,
 new required fields or changed semantics require an explicit contract-version migration.
+
+- Added F003 normalization preview/confirmation/cancellation operations with source, confidence, issue, conflict and record-candidate fields.

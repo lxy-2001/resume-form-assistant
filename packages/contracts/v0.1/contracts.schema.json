@@ -19,6 +19,12 @@
     {"$ref": "#/$defs/ProfileImportConfirmResponse"},
     {"$ref": "#/$defs/ProfileImportCancelRequest"},
     {"$ref": "#/$defs/ProfileImportCancelResponse"},
+    {"$ref": "#/$defs/ProfileNormalizationPreviewRequest"},
+    {"$ref": "#/$defs/ProfileNormalizationPreviewResponse"},
+    {"$ref": "#/$defs/ProfileNormalizationConfirmRequest"},
+    {"$ref": "#/$defs/ProfileNormalizationConfirmResponse"},
+    {"$ref": "#/$defs/ProfileNormalizationCancelRequest"},
+    {"$ref": "#/$defs/ProfileNormalizationCancelResponse"},
     {"$ref": "#/$defs/ScanRequest"},
     {"$ref": "#/$defs/ScanResponse"},
     {"$ref": "#/$defs/MatchRequest"},
@@ -1250,6 +1256,90 @@
           }
         }
       ],
+      "unevaluatedProperties": false
+    },
+    "NormalizationIssue": {
+      "type": "object",
+      "required": ["code", "message", "severity"],
+      "properties": {
+        "code": {"$ref": "#/$defs/NonEmptyString"},
+        "message": {"$ref": "#/$defs/NonEmptyString"},
+        "severity": {"type": "string", "enum": ["info", "warning", "error"]},
+        "action": {"$ref": "#/$defs/NonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "NormalizedCandidate": {
+      "type": "object",
+      "required": ["candidate_id", "target_kind", "field_id", "label", "field_type", "normalized_value", "source", "confidence", "status", "requires_confirmation", "issues"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "target_kind": {"const": "field"},
+        "field_id": {"$ref": "#/$defs/Id"},
+        "label": {"$ref": "#/$defs/NonEmptyString"},
+        "field_type": {"$ref": "#/$defs/FieldType"},
+        "original_value": {"$ref": "#/$defs/JsonValue"},
+        "normalized_value": {"$ref": "#/$defs/JsonValue"},
+        "value": {"$ref": "#/$defs/JsonValue"},
+        "source": {"$ref": "#/$defs/Source"},
+        "confidence": {"$ref": "#/$defs/Confidence"},
+        "status": {"type": "string", "enum": ["new", "unchanged", "possible_duplicate", "conflict", "unclassified", "invalid"]},
+        "requires_confirmation": {"const": true},
+        "existing_value": {"$ref": "#/$defs/JsonValue"},
+        "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}
+      },
+      "additionalProperties": false
+    },
+    "RecordCandidate": {
+      "type": "object",
+      "required": ["candidate_id", "target_kind", "record_type", "fields", "source", "confidence", "status", "requires_confirmation", "issues"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/Id"},
+        "target_kind": {"const": "record"},
+        "record_type": {"type": "string", "enum": ["education", "work", "internship", "project", "unknown"]},
+        "fields": {"type": "array", "items": {"$ref": "#/$defs/JsonValue"}},
+        "source": {"$ref": "#/$defs/Source"},
+        "confidence": {"$ref": "#/$defs/Confidence"},
+        "status": {"type": "string", "enum": ["new", "unchanged", "possible_duplicate", "conflict", "unclassified", "invalid"]},
+        "requires_confirmation": {"const": true},
+        "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}
+      },
+      "additionalProperties": false
+    },
+    "ProfileNormalizationPreviewRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {"type": "object", "required": ["operation", "source_task_id", "profile_id"], "properties": {"operation": {"const": "profile.normalize.preview"}, "source_task_id": {"$ref": "#/$defs/Id"}, "profile_id": {"$ref": "#/$defs/Id"}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileNormalizationPreviewResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {"type": "object", "required": ["operation", "task_id", "profile_id", "profile_version", "candidates", "model_used", "remote_data_sent"], "properties": {"operation": {"const": "profile.normalize.preview.result"}, "task_id": {"$ref": "#/$defs/Id"}, "source_task_id": {"$ref": "#/$defs/Id"}, "profile_id": {"$ref": "#/$defs/Id"}, "profile_version": {"type": "integer", "minimum": 0}, "task_state": {"$ref": "#/$defs/TaskState"}, "candidates": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/NormalizedCandidate"}, {"$ref": "#/$defs/RecordCandidate"}]}}, "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}, "model_used": {"type": "boolean"}, "remote_data_sent": {"type": "boolean"}, "consent_recorded": {"type": "boolean"}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "NormalizationDecision": {
+      "type": "object",
+      "required": ["candidate_id", "decision", "user_confirmed"],
+      "properties": {"candidate_id": {"$ref": "#/$defs/Id"}, "decision": {"type": "string", "enum": ["accept", "modify", "skip", "reject"]}, "value": {"$ref": "#/$defs/JsonValue"}, "target_scope": {"$ref": "#/$defs/Scope"}, "user_confirmed": {"const": true}},
+      "additionalProperties": false
+    },
+    "ProfileNormalizationConfirmRequest": {
+      "allOf": [{"$ref": "#/$defs/RequestEnvelope"}, {"type": "object", "required": ["operation", "profile_id", "expected_profile_version", "decisions"], "properties": {"operation": {"const": "profile.normalize.confirm"}, "profile_id": {"$ref": "#/$defs/Id"}, "expected_profile_version": {"type": "integer", "minimum": 0}, "decisions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/NormalizationDecision"}}}}],
+      "unevaluatedProperties": false
+    },
+    "ProfileNormalizationConfirmResponse": {
+      "allOf": [{"$ref": "#/$defs/ResponseEnvelope"}, {"type": "object", "required": ["operation", "written_field_ids", "rejected_candidate_ids", "warnings"], "properties": {"operation": {"const": "profile.normalize.confirm.result"}, "written_field_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "rejected_candidate_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "profile_version": {"type": "integer", "minimum": 0}, "warnings": {"type": "array", "items": {"$ref": "#/$defs/Warning"}}}}],
+      "unevaluatedProperties": false
+    },
+    "ProfileNormalizationCancelRequest": {
+      "allOf": [{"$ref": "#/$defs/RequestEnvelope"}, {"type": "object", "required": ["operation"], "properties": {"operation": {"const": "profile.normalize.cancel"}}}],
+      "unevaluatedProperties": false
+    },
+    "ProfileNormalizationCancelResponse": {
+      "allOf": [{"$ref": "#/$defs/ResponseEnvelope"}, {"type": "object", "required": ["operation", "cancelled"], "properties": {"operation": {"const": "profile.normalize.cancel.result"}, "cancelled": {"const": true}}}],
       "unevaluatedProperties": false
     },
     "PageField": {

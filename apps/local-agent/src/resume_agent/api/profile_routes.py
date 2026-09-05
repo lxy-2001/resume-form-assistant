@@ -1029,7 +1029,16 @@ def register_profile_routes(app: Any, service: ProfileService) -> None:
     from resume_agent.api.import_routes import register_import_routes
     from resume_agent.imports.service import ImportService
 
-    register_import_routes(app, ImportService(service), replay_cache=replay_cache)
+    import_service = ImportService(service)
+    register_import_routes(app, import_service, replay_cache=replay_cache)
+    from resume_agent.api.normalization_routes import register_normalization_routes
+    from resume_agent.normalization.service import NormalizationService
+
+    register_normalization_routes(
+        app,
+        NormalizationService(service, import_service),
+        replay_cache=replay_cache,
+    )
 
 
 __all__ = ["register_profile_routes"]

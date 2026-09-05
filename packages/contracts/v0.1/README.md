@@ -133,3 +133,5 @@ Agent 静默产生不同解释。
 下列能力不在 v0.1 消息目录中，等对应 Feature 冻结需求后再增加独立契约：长文本生成与
 审校建议、网站适配配置 CRUD、复杂控件/附件、跨步骤导航和多用户同步。这样可以先让
 F001–F009 共用稳定边界，避免为尚未实现的功能提前锁定协议。
+
+F003 增加 `profile.normalize.preview`、`profile.normalize.confirm` 和 `profile.normalize.cancel`，用于短生命周期的标准化候选、记录建议、问题和人工决定。候选必须带来源、置信度和 `requires_confirmation=true`；确认写入仍复用 F001 的版本校验。

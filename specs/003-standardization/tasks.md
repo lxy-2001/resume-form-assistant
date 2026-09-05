@@ -2,18 +2,18 @@
 
 ## Phase 1 — Setup
 
-- [ ] T001 [P] Add F003 feature metadata and update `.specify/feature.json` to `specs/003-standardization`
-- [ ] T002 [P] Record F003 research decisions and data model in `specs/003-standardization/research.md` and `specs/003-standardization/data-model.md`
-- [ ] T003 Update `docs/product/roadmap.md` to mark F003 as Specifying and document the approved scope and branch
+- [x] T001 [P] Add F003 feature metadata and update `.specify/feature.json` to `specs/003-standardization`
+- [x] T002 [P] Record F003 research decisions and data model in `specs/003-standardization/research.md` and `specs/003-standardization/data-model.md`
+- [x] T003 Update `docs/product/roadmap.md` to mark F003 as Specifying and document the approved scope and branch
 
 ## Phase 2 — Foundational contract and test seams
 
-- [ ] T004 [P] Add normalization operation and candidate schemas to `packages/contracts/v0.1/contracts.schema.json`
-- [ ] T005 [P] Add redacted normalization preview/confirm/cancel examples under `packages/contracts/v0.1/examples/`
-- [ ] T006 [P] Add contract validation tests for normalization candidates, issues, record decisions and consent flags in `tests/contracts/`
-- [ ] T007 Add normalization request/response types and operation names to `apps/local-agent/src/resume_agent/profile/models.py` or a focused normalization model module
-- [ ] T008 Add extension normalization types and client method signatures in `apps/extension/src/options/profileClient.ts`
-- [ ] T009 Add failing acceptance tests for preview isolation, explicit confirmation, stale versions and privacy flags in `apps/local-agent/tests/contract/test_normalization_routes.py`
+- [x] T004 [P] Add normalization operation and candidate schemas to `packages/contracts/v0.1/contracts.schema.json`
+- [x] T005 [P] Add redacted normalization preview/confirm/cancel examples under `packages/contracts/v0.1/examples/`
+- [x] T006 [P] Add contract validation tests for normalization candidates, issues, record decisions and consent flags in `tests/contracts/`
+- [x] T007 Add normalization request/response types and operation names to `apps/local-agent/src/resume_agent/profile/models.py` or a focused normalization model module
+- [x] T008 Add extension normalization types and client method signatures in `apps/extension/src/options/profileClient.ts`
+- [x] T009 Add failing acceptance tests for preview isolation, explicit confirmation, stale versions and privacy flags in `apps/local-agent/tests/contract/test_normalization_routes.py`
 
 ## Phase 3 — User Story 1: 标准字段清理与归一化
 
@@ -21,12 +21,12 @@
 
 **Independent test**: Rule and service tests prove valid normalization, invalid values, duplicate source candidates and preview isolation.
 
-- [ ] T010 [P] [US1] Add rule normalization fixtures for whitespace, dates, phone, email, URL, numbers and education aliases in `apps/local-agent/tests/fixtures/normalization/`
-- [ ] T011 [P] [US1] Implement value normalization result and issue models in `apps/local-agent/src/resume_agent/normalization/models.py`
-- [ ] T012 [US1] Implement deterministic field normalization and F001 validation adapters in `apps/local-agent/src/resume_agent/normalization/rules.py`
-- [ ] T013 [US1] Add unit tests for accepted, rejected and ambiguous values in `apps/local-agent/tests/unit/test_normalization_rules.py`
-- [ ] T014 [US1] Implement field candidate projection with original value, normalized value, evidence, confidence and source in `apps/local-agent/src/resume_agent/normalization/fields.py`
-- [ ] T015 [US1] Add service tests proving multiple sources remain visible and preview does not change the profile in `apps/local-agent/tests/unit/test_normalization_service.py`
+- [x] T010 [P] [US1] Add rule normalization fixtures for whitespace, dates, phone, email, URL, numbers and education aliases in `apps/local-agent/tests/fixtures/normalization/`
+- [x] T011 [P] [US1] Implement value normalization result and issue models in `apps/local-agent/src/resume_agent/normalization/models.py`
+- [x] T012 [US1] Implement deterministic field normalization and F001 validation adapters in `apps/local-agent/src/resume_agent/normalization/rules.py`
+- [x] T013 [US1] Add unit tests for accepted, rejected and ambiguous values in `apps/local-agent/tests/unit/test_normalization_rules.py`
+- [x] T014 [US1] Implement field candidate projection with original value, normalized value, evidence, confidence and source in `apps/local-agent/src/resume_agent/normalization/fields.py`
+- [x] T015 [US1] Add service tests proving multiple sources remain visible and preview does not change the profile in `apps/local-agent/tests/unit/test_normalization_service.py`
 
 ## Phase 4 — User Story 2: 重复经历归类与资料合并
 
@@ -34,9 +34,9 @@
 
 **Independent test**: Record fixtures produce traceable record candidates and never persist an unconfirmed record.
 
-- [ ] T016 [P] [US2] Add redacted multi-record segment fixtures and expected classifications in `apps/local-agent/tests/fixtures/normalization/records/`
-- [ ] T017 [US2] Implement nearby-heading and source-order grouping in `apps/local-agent/src/resume_agent/normalization/records.py`
-- [ ] T018 [US2] Implement record type classification with explicit `unknown` fallback and issues in `apps/local-agent/src/resume_agent/normalization/records.py`
+- [x] T016 [P] [US2] Add redacted multi-record segment fixtures and expected classifications in `apps/local-agent/tests/fixtures/normalization/records/`
+- [x] T017 [US2] Implement nearby-heading and source-order grouping in `apps/local-agent/src/resume_agent/normalization/records.py`
+- [x] T018 [US2] Implement record type classification with explicit `unknown` fallback and issues in `apps/local-agent/src/resume_agent/normalization/records.py`
 - [ ] T019 [US2] Implement existing-record comparison for new, unchanged, possible duplicate and conflict statuses in `apps/local-agent/src/resume_agent/normalization/merge.py`
 - [ ] T020 [US2] Add unit tests for record grouping, unknown type, duplicate overlap and field conflicts in `apps/local-agent/tests/unit/test_normalization_records.py`
 - [ ] T021 [US2] Add normalization preview integration tests for field and record candidates in `apps/local-agent/tests/contract/test_normalization_preview.py`
@@ -47,12 +47,12 @@
 
 **Independent test**: Confirm tests prove accepted changes persist, rejected/uncertain changes do not, and stale/replayed requests are safe.
 
-- [ ] T022 [US3] Implement task lifecycle, TTL and source-task lookup in `apps/local-agent/src/resume_agent/normalization/service.py`
-- [ ] T023 [US3] Add decision validation and re-normalization tests for accept, modify, merge, skip and reject in `apps/local-agent/tests/unit/test_normalization_decisions.py`
-- [ ] T024 [US3] Implement atomic decision conversion to `ProfileService.upsert` fields and records with explicit confirmation in `apps/local-agent/src/resume_agent/normalization/service.py`
-- [ ] T025 [US3] Implement normalization preview, confirm and cancel routes in `apps/local-agent/src/resume_agent/api/normalization_routes.py`
-- [ ] T026 [US3] Register normalization routes and services through the existing app/profile route assembly in `apps/local-agent/src/resume_agent/api/profile_routes.py` and `apps/local-agent/src/resume_agent/api/app.py`
-- [ ] T027 [US3] Add route tests for confirm persistence, stale version, invalid decision, cancellation, expiry and idempotent replay in `apps/local-agent/tests/contract/test_normalization_routes.py`
+- [x] T022 [US3] Implement task lifecycle, TTL and source-task lookup in `apps/local-agent/src/resume_agent/normalization/service.py`
+- [x] T023 [US3] Add decision validation and re-normalization tests for accept, modify, merge, skip and reject in `apps/local-agent/tests/unit/test_normalization_decisions.py`
+- [x] T024 [US3] Implement atomic decision conversion to `ProfileService.upsert` fields and records with explicit confirmation in `apps/local-agent/src/resume_agent/normalization/service.py`
+- [x] T025 [US3] Implement normalization preview, confirm and cancel routes in `apps/local-agent/src/resume_agent/api/normalization_routes.py`
+- [x] T026 [US3] Register normalization routes and services through the existing app/profile route assembly in `apps/local-agent/src/resume_agent/api/profile_routes.py` and `apps/local-agent/src/resume_agent/api/app.py`
+- [x] T027 [US3] Add route tests for confirm persistence, stale version, invalid decision, cancellation, expiry and idempotent replay in `apps/local-agent/tests/contract/test_normalization_routes.py`
 
 ## Phase 6 — User Story 4: 失败处理与隐私边界
 
@@ -60,17 +60,17 @@
 
 **Independent test**: Failure tests prove no profile mutation, no remote call and redacted errors for every terminal failure.
 
-- [ ] T028 [P] [US4] Add stable normalization error codes and redacted details in `apps/local-agent/src/resume_agent/normalization/errors.py` and `apps/local-agent/src/resume_agent/privacy/redaction.py`
-- [ ] T029 [US4] Add tests for empty input, invalid values, unavailable semantic adapter, storage failure, task expiry and cleanup in `apps/local-agent/tests/unit/test_normalization_failures.py`
-- [ ] T030 [US4] Add API privacy tests proving `model_used=false`, `remote_data_sent=false`, no evidence leakage and exact loopback/origin enforcement in `apps/local-agent/tests/contract/test_normalization_privacy.py`
+- [x] T028 [P] [US4] Add stable normalization error codes and redacted details in `apps/local-agent/src/resume_agent/normalization/errors.py` and `apps/local-agent/src/resume_agent/privacy/redaction.py`
+- [x] T029 [US4] Add tests for empty input, invalid values, unavailable semantic adapter, storage failure, task expiry and cleanup in `apps/local-agent/tests/unit/test_normalization_failures.py`
+- [x] T030 [US4] Add API privacy tests proving `model_used=false`, `remote_data_sent=false`, no evidence leakage and exact loopback/origin enforcement in `apps/local-agent/tests/contract/test_normalization_privacy.py`
 
 ## Phase 7 — Options review and cross-cutting polish
 
-- [ ] T031 [US3] Implement normalization review state, evidence, confidence, issue and conflict rendering in `apps/extension/src/options/components/ImportPanel.tsx`
+- [x] T031 [US3] Implement normalization review state, evidence, confidence, issue and conflict rendering in `apps/extension/src/options/components/ImportPanel.tsx`
 - [ ] T032 [US3] Implement keyboard-accessible edit, merge, accept, skip, reject and cancel controls in `apps/extension/src/options/components/NormalizationReview.tsx`
-- [ ] T033 [US3] Add extension client/component tests for explicit decisions, correction payloads, cancellation and stale errors in `apps/extension/src/options/`
-- [ ] T034 [P] Update `apps/local-agent/README.md`, `apps/extension/README.md`, `packages/contracts/v0.1/README.md` and `CHANGELOG.md` with F003 behavior and privacy boundaries
-- [ ] T035 Run targeted and full verification: local-agent pytest, contract tests, Ruff, mypy, extension tests, TypeScript, ESLint and Vite build; record results in `specs/003-standardization/quickstart.md`
+- [x] T033 [US3] Add extension client/component tests for explicit decisions, correction payloads, cancellation and stale errors in `apps/extension/src/options/`
+- [x] T034 [P] Update `apps/local-agent/README.md`, `apps/extension/README.md`, `packages/contracts/v0.1/README.md` and `CHANGELOG.md` with F003 behavior and privacy boundaries
+- [x] T035 Run targeted and full verification: local-agent pytest, contract tests, Ruff, mypy, extension tests, TypeScript, ESLint and Vite build; record results in `specs/003-standardization/quickstart.md`
 - [ ] T036 Run `speckit-converge` and `speckit-analyze`, resolve all critical/high findings, and update this task list with any remaining bounded work
 
 ## Dependencies and Execution Order
@@ -103,3 +103,4 @@ T001-T003 → T004-T009 →
 4. Add review UI, privacy/failure hardening, documentation and full verification.
 
 Total tasks: **36**.
+
