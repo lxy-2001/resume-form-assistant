@@ -199,6 +199,9 @@ def register_normalization_routes(
         data = body if isinstance(body, dict) else {}
         request_id = str(data.get("request_id") or "local-request")
         task_id = str(data.get("task_id") or "local-task")
+        replay = _replay_response(request, data, replay_cache) if isinstance(body, dict) else None
+        if replay is not None:
+            return replay
         if (
             set(data) - _CANCEL_KEYS
             or data.get("schema_version") != SCHEMA_VERSION
