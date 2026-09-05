@@ -10,7 +10,7 @@ interface ImportPanelProps {
   onError: (message: string) => void;
 }
 
-type Decision = "accept" | "modify" | "reject";
+type Decision = "accept" | "modify" | "skip" | "reject";
 type ReviewCandidate = ImportCandidate | NormalizedCandidate;
 
 export function ImportPanel({ client, profileId, snapshot, saving, onComplete, onError }: ImportPanelProps) {
@@ -94,11 +94,14 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
           <p>来源：{candidate.source.location ?? candidate.source.document_ref ?? "文档"}；置信度：{Math.round(candidate.confidence * 100)}%</p>
           {"evidence" in candidate && candidate.evidence?.length ? <p>证据：{candidate.evidence.join("；")}</p> : null}
           {conflict(candidate) ? <p role="alert">已有值：{String(candidate.existing_value)}，确认后才会替换</p> : null}
+          {"sensitivity" in candidate && candidate.sensitivity !== "normal" ? <p role="alert">敏感字段：需要明确确认</p> : null}
+          {"conversion_note" in candidate && candidate.conversion_note ? <p>转换：{candidate.conversion_note}</p> : null}
           {issues?.length ? <p role="alert">问题：{issues.map((item) => item.message).filter(Boolean).join("；")}</p> : null}
           <button type="button" onClick={() => decide(candidate.candidate_id, "accept")} aria-pressed={state === "accept"}>接受</button>
           <input aria-label={`修改 ${candidate.label ?? "候选"}`} defaultValue={String(candidateValue(candidate))} disabled={busy || saving} />
           <button type="button" onClick={(event) => { const input = event.currentTarget.previousElementSibling as HTMLInputElement | null; decide(candidate.candidate_id, "modify", input?.value ?? String(candidateValue(candidate))); }} aria-pressed={state === "modify"}>使用修改值</button>
           <button type="button" onClick={() => decide(candidate.candidate_id, "reject")} aria-pressed={state === "reject"}>拒绝</button>
+          <button type="button" onClick={() => decide(candidate.candidate_id, "skip")} aria-pressed={state === "skip"}>跳过</button>
         </article>;
       })}
       <button type="button" onClick={() => void cancel()} disabled={busy || saving}>取消导入</button>

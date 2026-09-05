@@ -27,6 +27,10 @@ class NormalizedCandidate:
     requires_confirmation: bool = True
     issues: tuple[NormalizationIssue, ...] = ()
     existing_value: Any | None = None
+    sensitivity: str = "normal"
+    evidence: tuple[str, ...] = ()
+    warnings: tuple[dict[str, Any], ...] = ()
+    conversion_note: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -42,6 +46,9 @@ class NormalizedCandidate:
             "confidence": self.confidence,
             "status": self.status,
             "requires_confirmation": True,
+            "sensitivity": self.sensitivity,
+            "evidence": list(self.evidence),
+            "warnings": list(self.warnings),
             "issues": [
                 {
                     "code": issue.code,
@@ -54,6 +61,8 @@ class NormalizedCandidate:
         }
         if self.existing_value is not None:
             result["existing_value"] = self.existing_value
+        if self.conversion_note:
+            result["conversion_note"] = self.conversion_note
         return result
 
 
@@ -67,6 +76,7 @@ class RecordCandidate:
     status: str = "new"
     requires_confirmation: bool = True
     issues: tuple[NormalizationIssue, ...] = ()
+    normalized_value: Any | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +88,7 @@ class RecordCandidate:
             "confidence": self.confidence,
             "status": self.status,
             "requires_confirmation": True,
+            "normalized_value": self.normalized_value,
             "issues": [
                 {"code": issue.code, "message": issue.message, "severity": issue.severity}
                 for issue in self.issues

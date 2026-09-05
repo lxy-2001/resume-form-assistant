@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -32,6 +33,7 @@ _CONFIRM_KEYS = {
     "decisions",
 }
 _CANCEL_KEYS = {"schema_version", "request_id", "task_id", "operation"}
+_DECISION_KEYS = {"candidate_id", "decision", "value", "target_scope", "user_confirmed"}
 
 
 def _bad(
@@ -53,6 +55,16 @@ def _bad(
     payload["request_id"] = request_id
     payload["task_id"] = task_id
     return JSONResponse(payload, status_code=status)
+
+
+def _error_code(message: str) -> str:
+    if "expired" in message:
+        return "TASK_EXPIRED"
+    if "version" in message or "stale" in message:
+        return "STALE_PROFILE_VERSION"
+    if "storage" in message:
+        return "STORAGE_FAILURE"
+    return "INVALID_FIELD_VALUE"
 
 
 def register_normalization_routes(
@@ -124,6 +136,14 @@ def register_normalization_routes(
             or not isinstance(data.get("expected_profile_version"), int)
             or not isinstance(data.get("decisions"), list)
             or not data["decisions"]
+            or any(
+                not isinstance(item, Mapping)
+                or set(item) - _DECISION_KEYS
+                or not isinstance(item.get("candidate_id"), str)
+                or item.get("decision") not in {"accept", "modify", "skip", "reject"}
+                or item.get("user_confirmed") is not True
+                for item in data["decisions"]
+            )
         ):
             return _bad(
                 request,
@@ -138,13 +158,13 @@ def register_normalization_routes(
                 profile_id=str(data["profile_id"]),
                 expected_profile_version=int(data["expected_profile_version"]),
             )
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             return _bad(
                 request,
                 str(exc),
                 request_id=request_id,
                 task_id=task_id,
-                code="INVALID_FIELD_VALUE",
+                code=_error_code(str(exc)),
                 status=409,
             )
         payload = {
@@ -178,7 +198,15 @@ def register_normalization_routes(
                 request_id=request_id,
                 task_id=task_id,
             )
-        service.cancel(task_id)
+        if not service.cancel(task_id):
+            return _bad(
+                request,
+                "normalization task is unavailable",
+                request_id=request_id,
+                task_id=task_id,
+                code="TASK_UNAVAILABLE",
+                status=409,
+            )
         payload = {
             "schema_version": SCHEMA_VERSION,
             "request_id": request_id,

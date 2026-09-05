@@ -21,7 +21,7 @@
 
 ## Verification record (2026-09-05)
 
-- Local-agent: 264 tests passed; Ruff check/format and mypy passed.
+- Local-agent: 272 tests passed; Ruff check/format and mypy passed.
 - Shared contracts: 58 tests passed and schema JSON parsed successfully.
 - Extension: 36 tests passed; TypeScript, ESLint and Vite build passed.
 - Untracked temporary files in the workspace were left untouched.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 from resume_agent.normalization.models import NormalizationIssue
@@ -74,6 +75,17 @@ def normalize_value(
                 (NormalizationIssue("INVALID_DATE", "日期格式无法标准化", "error", "修改日期"),),
             )
         year, month, day = match.groups()
+        try:
+            if day is None:
+                date(int(year), int(month), 1)
+            else:
+                date(int(year), int(month), int(day))
+        except ValueError:
+            return (
+                cleaned,
+                0.0,
+                (NormalizationIssue("INVALID_DATE", "日期不存在", "error", "修改日期"),),
+            )
         normalized = (
             f"{year}-{int(month):02d}" if day is None else f"{year}-{int(month):02d}-{int(day):02d}"
         )

@@ -9,14 +9,17 @@ from typing import Any
 from resume_agent.imports.service import ImportService
 from resume_agent.normalization.merge import classify_record_status
 from resume_agent.normalization.models import (
+    NormalizationIssue,
     NormalizationTask,
     NormalizedCandidate,
 )
 from resume_agent.normalization.records import group_record_candidates
 from resume_agent.normalization.rules import normalize_value
+from resume_agent.profile.errors import InvalidFieldValueError
 from resume_agent.profile.models import Scope, SourceKind
 from resume_agent.profile.service import ProfileService
 from resume_agent.profile.standard_fields import get_standard_field
+from resume_agent.profile.validation import validate_value
 
 
 def _field_type_for(field_id: str) -> str:
@@ -60,12 +63,32 @@ class NormalizationService:
     ) -> NormalizationTask:
         source = self._imports.get_task(source_task_id)
         current = self._profiles.read(profile_id)
+        if source.profile_id != current.profile_id:
+            raise ValueError("normalization source task does not belong to profile")
         existing = {(field.id, field.scope): field.value for field in current.fields}
+        definitions = {definition.id: definition for definition in current.field_definitions}
         identifier = task_id or f"normalize-{uuid.uuid4().hex}"
         candidates: list[NormalizedCandidate] = []
         for raw in source.candidates:
             field_id = str(raw["field_id"])
             normalized, confidence, issues = normalize_value(raw["field_type"], raw.get("value"))
+            definition = definitions.get(field_id) or get_standard_field(field_id)
+            if definition is not None and not issues:
+                try:
+                    normalized = validate_value(
+                        definition.field_type,
+                        normalized,
+                        definition.validation,
+                        options=definition.options,
+                    )
+                except InvalidFieldValueError as exc:
+                    reason = str((exc.details or {}).get("reason", "value"))
+                    issues = (
+                        NormalizationIssue(
+                            "INVALID_FIELD_VALUE", f"字段校验失败：{reason}", "error", "人工纠正"
+                        ),
+                    )
+                    confidence = 0.0
             current_value = existing.get((field_id, Scope.GLOBAL))
             status = "new"
             if issues:
@@ -86,6 +109,15 @@ class NormalizationService:
                 status=status,
                 issues=tuple(issues),
                 existing_value=current_value,
+                sensitivity=str(
+                    raw.get("sensitivity")
+                    or (definition.default_sensitivity.value if definition else "normal")
+                ),
+                evidence=tuple(str(item) for item in raw.get("evidence", []) if item),
+                warnings=tuple(item for item in raw.get("warnings", []) if isinstance(item, dict)),
+                conversion_note=(
+                    "已按本地规则规范化" if normalized != raw.get("value") and not issues else None
+                ),
             )
             candidates.append(candidate)
         records = tuple(
@@ -116,11 +148,17 @@ class NormalizationService:
             raise ValueError("profile version does not match normalization preview")
         by_id = {candidate.candidate_id: candidate for candidate in task.candidates}
         record_by_id = {candidate.candidate_id: candidate for candidate in task.records}
+        definitions = {
+            definition.id: definition
+            for definition in self._profiles.read(profile_id).field_definitions
+        }
         fields: list[dict[str, Any]] = []
         records: list[dict[str, Any]] = []
         rejected: list[str] = []
         seen: set[str] = set()
         for decision in decisions:
+            if not isinstance(decision, Mapping):
+                raise TypeError("normalization decision is invalid")
             candidate_id = decision.get("candidate_id")
             if not isinstance(candidate_id, str) or candidate_id in seen:
                 raise ValueError("normalization candidate id is invalid")
@@ -136,6 +174,9 @@ class NormalizationService:
             ):
                 raise ValueError("normalization decision is invalid")
             if choice in {"skip", "reject"}:
+                rejected.append(candidate_id)
+                continue
+            if candidate is not None and candidate.status == "unchanged":
                 rejected.append(candidate_id)
                 continue
             if record_candidate is not None:
@@ -154,7 +195,7 @@ class NormalizationService:
                                     "label": item["id"],
                                     "field_type": _field_type_for(item["id"]),
                                     "scope": Scope.GLOBAL.value,
-                                    "sensitivity": "normal",
+                                    "sensitivity": item.get("sensitivity", "normal"),
                                     "requires_confirmation": True,
                                     "confirmed": True,
                                     "updated_at": now.isoformat(),
@@ -173,6 +214,19 @@ class NormalizationService:
                 value, _, issues = normalize_value(candidate.field_type, value)
                 if issues:
                     raise ValueError("modified value is invalid")
+                definition = definitions.get(candidate.field_id) or get_standard_field(
+                    candidate.field_id
+                )
+                if definition is not None:
+                    try:
+                        value = validate_value(
+                            definition.field_type,
+                            value,
+                            definition.validation,
+                            options=definition.options,
+                        )
+                    except InvalidFieldValueError as exc:
+                        raise ValueError("modified value is invalid") from exc
             fields.append(
                 {
                     "id": candidate.field_id,
@@ -180,7 +234,7 @@ class NormalizationService:
                     "field_type": candidate.field_type,
                     "value": value,
                     "scope": decision.get("target_scope", Scope.GLOBAL.value),
-                    "sensitivity": "normal",
+                    "sensitivity": candidate.sensitivity,
                     "requires_confirmation": True,
                     "confirmed": True,
                     "source": {
@@ -216,11 +270,13 @@ class NormalizationService:
             "warnings": [],
         }
 
-    def cancel(self, task_id: str) -> None:
+    def cancel(self, task_id: str) -> bool:
         task = self._tasks.get(task_id)
-        if task is not None:
-            task.state = "cancelled"
-            self._tasks.pop(task_id, None)
+        if task is None:
+            return False
+        task.state = "cancelled"
+        self._tasks.pop(task_id, None)
+        return True
 
 
 __all__ = ["NormalizationService"]

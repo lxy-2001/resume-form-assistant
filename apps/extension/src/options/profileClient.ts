@@ -201,7 +201,7 @@ export interface ImportConfirmInput {
   expected_profile_version: number;
   decisions: Array<{
     candidate_id: string;
-    decision: "accept" | "modify" | "reject";
+    decision: "accept" | "modify" | "skip" | "reject";
     value?: ProfileValue;
     target_scope?: "global" | "website" | "application";
     user_confirmed: true;
@@ -233,6 +233,10 @@ export interface NormalizedCandidate {
   requires_confirmation: true;
   existing_value?: ProfileValue;
   issues: Array<{ code?: string; message?: string; severity?: string; action?: string }>;
+  sensitivity?: "normal" | "sensitive" | "highly_sensitive";
+  evidence?: string[];
+  warnings?: Array<{ code?: string; message?: string; severity?: string }>;
+  conversion_note?: string;
 }
 export interface NormalizationPreviewResult {
   task_id: string;
@@ -243,7 +247,7 @@ export interface NormalizationPreviewResult {
   model_used: boolean;
   remote_data_sent: boolean;
 }
-export interface NormalizationConfirmResult { written_field_ids: string[]; rejected_candidate_ids: string[]; profile_version?: number; warnings: Array<{ code?: string; message?: string; severity?: string }>; }
+export interface NormalizationConfirmResult { written_field_ids: string[]; written_record_ids?: string[]; rejected_candidate_ids: string[]; profile_version?: number; warnings: Array<{ code?: string; message?: string; severity?: string }>; }
 
 
 export interface ProfileClient {

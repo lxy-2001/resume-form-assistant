@@ -1285,6 +1285,10 @@
         "confidence": {"$ref": "#/$defs/Confidence"},
         "status": {"type": "string", "enum": ["new", "unchanged", "possible_duplicate", "conflict", "unclassified", "invalid"]},
         "requires_confirmation": {"const": true},
+        "sensitivity": {"$ref": "#/$defs/Sensitivity"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/NonEmptyString"}},
+        "warnings": {"type": "array", "items": {"$ref": "#/$defs/Warning"}},
+        "conversion_note": {"$ref": "#/$defs/NonEmptyString"},
         "existing_value": {"$ref": "#/$defs/JsonValue"},
         "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}
       },
@@ -1302,6 +1306,7 @@
         "confidence": {"$ref": "#/$defs/Confidence"},
         "status": {"type": "string", "enum": ["new", "unchanged", "possible_duplicate", "conflict", "unclassified", "invalid"]},
         "requires_confirmation": {"const": true},
+        "normalized_value": {"$ref": "#/$defs/JsonValue"},
         "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}
       },
       "additionalProperties": false
@@ -1331,7 +1336,7 @@
       "unevaluatedProperties": false
     },
     "ProfileNormalizationConfirmResponse": {
-      "allOf": [{"$ref": "#/$defs/ResponseEnvelope"}, {"type": "object", "required": ["operation", "written_field_ids", "rejected_candidate_ids", "warnings"], "properties": {"operation": {"const": "profile.normalize.confirm.result"}, "written_field_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "rejected_candidate_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "profile_version": {"type": "integer", "minimum": 0}, "warnings": {"type": "array", "items": {"$ref": "#/$defs/Warning"}}}}],
+      "allOf": [{"$ref": "#/$defs/ResponseEnvelope"}, {"type": "object", "required": ["operation", "written_field_ids", "rejected_candidate_ids", "warnings"], "properties": {"operation": {"const": "profile.normalize.confirm.result"}, "written_field_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "written_record_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "rejected_candidate_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}, "uniqueItems": true}, "profile_version": {"type": "integer", "minimum": 0}, "warnings": {"type": "array", "items": {"$ref": "#/$defs/Warning"}}}}],
       "unevaluatedProperties": false
     },
     "ProfileNormalizationCancelRequest": {

@@ -48,7 +48,7 @@
 **Independent test**: Confirm tests prove accepted changes persist, rejected/uncertain changes do not, and stale/replayed requests are safe.
 
 - [x] T022 [US3] Implement task lifecycle, TTL and source-task lookup in `apps/local-agent/src/resume_agent/normalization/service.py`
-- [x] T023 [US3] Add decision validation and re-normalization tests for accept, modify, merge, skip and reject in `apps/local-agent/tests/unit/test_normalization_decisions.py`
+- [x] T023 [US3] Add decision validation and re-normalization tests for accept, modify, skip and reject; keep duplicate merge as a review-only suggestion in `apps/local-agent/tests/unit/test_normalization_decisions.py`
 - [x] T024 [US3] Implement atomic decision conversion to `ProfileService.upsert` fields and records with explicit confirmation in `apps/local-agent/src/resume_agent/normalization/service.py`
 - [x] T025 [US3] Implement normalization preview, confirm and cancel routes in `apps/local-agent/src/resume_agent/api/normalization_routes.py`
 - [x] T026 [US3] Register normalization routes and services through the existing app/profile route assembly in `apps/local-agent/src/resume_agent/api/profile_routes.py` and `apps/local-agent/src/resume_agent/api/app.py`
@@ -67,7 +67,7 @@
 ## Phase 7 — Options review and cross-cutting polish
 
 - [x] T031 [US3] Implement normalization review state, evidence, confidence, issue and conflict rendering in `apps/extension/src/options/components/ImportPanel.tsx`
-- [x] T032 [US3] Implement keyboard-accessible edit, merge, accept, skip, reject and cancel controls in `apps/extension/src/options/components/NormalizationReview.tsx`
+- [x] T032 [US3] Implement keyboard-accessible edit, accept, skip, reject and cancel controls; show duplicate suggestions without automatic merge in `apps/extension/src/options/components/NormalizationReview.tsx`
 - [x] T033 [US3] Add extension client/component tests for explicit decisions, correction payloads, cancellation and stale errors in `apps/extension/src/options/`
 - [x] T034 [P] Update `apps/local-agent/README.md`, `apps/extension/README.md`, `packages/contracts/v0.1/README.md` and `CHANGELOG.md` with F003 behavior and privacy boundaries
 - [x] T035 Run targeted and full verification: local-agent pytest, contract tests, Ruff, mypy, extension tests, TypeScript, ESLint and Vite build; record results in `specs/003-standardization/quickstart.md`
