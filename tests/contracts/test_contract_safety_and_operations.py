@@ -57,6 +57,21 @@ def test_import_candidate_must_wait_for_user_confirmation() -> None:
         validator_for("ProfileImportPreview").validate(payload)
 
 
+def test_import_preview_can_carry_local_file_content_without_changing_source_metadata() -> None:
+    payload = example("profile-import-preview-request.json")
+    payload["content_base64"] = "c3ludGhldGljLXBkZg=="
+
+    validator_for("ProfileImportPreviewRequest").validate(payload)
+
+
+def test_import_preview_rejects_non_base64_content() -> None:
+    payload = example("profile-import-preview-request.json")
+    payload["content_base64"] = "not base64!"
+
+    with pytest.raises(ValidationError):
+        validator_for("ProfileImportPreviewRequest").validate(payload)
+
+
 def test_remote_model_consent_requires_explicit_user_approval() -> None:
     validator = validator_for("Consent")
 

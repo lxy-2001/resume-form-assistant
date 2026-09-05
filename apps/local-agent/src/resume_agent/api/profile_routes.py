@@ -1025,6 +1025,10 @@ def _lifecycle_router(service: ProfileService, replay_cache: _RequestReplayCache
 
 def register_profile_routes(app: Any, service: ProfileService) -> None:
     app.include_router(_router(service))
+    from resume_agent.api.import_routes import register_import_routes
+    from resume_agent.imports.service import ImportService
+
+    register_import_routes(app, ImportService(service))
 
 
 __all__ = ["register_profile_routes"]

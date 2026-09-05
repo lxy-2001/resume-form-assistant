@@ -288,7 +288,11 @@ class ProfileService:
                 if isinstance(source_data, Source)
                 else Source.model_validate(source_data)
             )
-            if source.kind is not SourceKind.MANUAL:
+            if source.kind not in {
+                SourceKind.MANUAL,
+                SourceKind.IMPORT,
+                SourceKind.USER_CORRECTION,
+            }:
                 raise self._invalid(field_id, "source", definition.field_type)
 
             supplied_timestamp = candidate_data.get("updated_at")

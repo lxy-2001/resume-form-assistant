@@ -1056,7 +1056,13 @@
             "operation": {"const": "profile.import.preview"},
             "source": {"$ref": "#/$defs/DocumentRef"},
             "consent": {"$ref": "#/$defs/Consent"},
-            "ocr_mode": {"type": "string", "enum": ["auto", "never", "force"]}
+            "ocr_mode": {"type": "string", "enum": ["auto", "never", "force"]},
+            "content_base64": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 22369624,
+              "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+            }
           }
         }
       ],
@@ -1084,6 +1090,9 @@
         "source": {"$ref": "#/$defs/Source"},
         "confidence": {"$ref": "#/$defs/Confidence"},
         "requires_confirmation": {"type": "boolean"},
+        "sensitivity": {"$ref": "#/$defs/Sensitivity"},
+        "existing_value_conflict": {"type": "boolean"},
+        "existing_value": {"$ref": "#/$defs/JsonValue"},
         "evidence": {
           "type": "array",
           "items": {"$ref": "#/$defs/NonEmptyString"}
@@ -1173,9 +1182,11 @@
         {"$ref": "#/$defs/RequestEnvelope"},
         {
           "type": "object",
-          "required": ["operation", "decisions"],
+          "required": ["operation", "profile_id", "expected_profile_version", "decisions"],
           "properties": {
             "operation": {"const": "profile.import.confirm"},
+            "profile_id": {"$ref": "#/$defs/Id"},
+            "expected_profile_version": {"type": "integer", "minimum": 0},
             "decisions": {
               "type": "array",
               "minItems": 1,
@@ -1204,6 +1215,7 @@
               "items": {"$ref": "#/$defs/Id"},
               "uniqueItems": true
             },
+            "profile_version": {"type": "integer", "minimum": 0},
             "warnings": {
               "type": "array",
               "items": {"$ref": "#/$defs/Warning"}
