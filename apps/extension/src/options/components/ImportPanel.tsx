@@ -42,11 +42,13 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
         task_id: taskId,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
-        decisions: candidates.map((candidate) => ({
-          candidate_id: candidate.candidate_id,
-          decision: ((candidate as ImportCandidate & { _decision?: "accept" | "reject" })._decision ?? "reject"),
-          user_confirmed: true,
-        })),
+        decisions: candidates
+          .map((candidate) => ({
+            candidate_id: candidate.candidate_id,
+            decision: (candidate as ImportCandidate & { _decision?: "accept" | "reject" })._decision,
+            user_confirmed: true as const,
+          }))
+          .filter((decision): decision is { candidate_id: string; decision: "accept" | "reject"; user_confirmed: true } => decision.decision !== undefined),
       });
       setCandidates([]); setTaskId(null); setFile(null);
       setMessage(`已写入 ${result.written_field_ids.length} 个字段`);
