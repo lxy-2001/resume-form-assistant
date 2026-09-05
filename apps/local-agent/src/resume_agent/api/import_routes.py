@@ -15,10 +15,16 @@ from fastapi.responses import JSONResponse
 from pypdf.errors import PdfReadError
 
 from resume_agent.api.app import SCHEMA_VERSION, _error_payload
+from resume_agent.api.profile_routes import (
+    _replay_response,
+    _RequestReplayCache,
+    _serialized_mutation,
+)
 from resume_agent.imports.service import ImportService
 from resume_agent.parsing.errors import ParsingError, UnsupportedDocumentError
 from resume_agent.parsing.pipeline import parse_document
 from resume_agent.parsing.tesseract_ocr import TesseractOcrEngine
+from resume_agent.profile.models import is_contract_id
 
 _PREVIEW_KEYS = {
     "schema_version",
@@ -39,6 +45,9 @@ _CONFIRM_KEYS = {
     "expected_profile_version",
     "decisions",
 }
+_CANCEL_KEYS = {"schema_version", "request_id", "task_id", "operation"}
+_SOURCE_KEYS = {"document_id", "filename", "media_type", "size_bytes", "sha256"}
+_CONSENT_KEYS = {"remote_model_allowed", "user_consented", "purpose", "redaction_profile"}
 _PDF = "application/pdf"
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
@@ -65,7 +74,7 @@ def _bad(
     return JSONResponse(payload, status_code=status)
 
 
-def _router(import_service: ImportService) -> APIRouter:
+def _router(import_service: ImportService, replay_cache: _RequestReplayCache) -> APIRouter:
     router = APIRouter()
 
     @router.post("/v0/profile/import/preview")
@@ -86,13 +95,27 @@ def _router(import_service: ImportService) -> APIRouter:
         if (
             body.get("schema_version") != SCHEMA_VERSION
             or body.get("operation") != "profile.import.preview"
+            or not is_contract_id(body.get("request_id"))
+            or not is_contract_id(body.get("task_id"))
             or not isinstance(source, dict)
             or not isinstance(encoded, str)
             or source.get("media_type") not in {_PDF, _DOCX}
-            or not isinstance(source.get("document_id"), str)
+            or not is_contract_id(source.get("document_id"))
             or not isinstance(source.get("filename"), str)
+            or set(source) - _SOURCE_KEYS
+            or (
+                source.get("size_bytes") is not None
+                and (not isinstance(source.get("size_bytes"), int) or source["size_bytes"] < 0)
+            )
+            or (
+                source.get("sha256") is not None
+                and (not isinstance(source.get("sha256"), str) or len(source["sha256"]) != 64)
+            )
             or not isinstance(consent, dict)
+            or set(consent) - _CONSENT_KEYS
             or consent.get("remote_model_allowed") is not False
+            or consent.get("user_consented", False) is not False
+            or body.get("ocr_mode", "auto") not in {"auto", "never", "force"}
         ):
             return _bad(
                 request,
@@ -198,6 +221,7 @@ def _router(import_service: ImportService) -> APIRouter:
         )
 
     @router.post("/v0/profile/import/confirm")
+    @_serialized_mutation(replay_cache)
     async def confirm(request: Request, body: object = Body(...)) -> JSONResponse:
         request.state.operation = "profile.import.confirm"
         if not isinstance(body, dict) or set(body) - _CONFIRM_KEYS:
@@ -209,10 +233,15 @@ def _router(import_service: ImportService) -> APIRouter:
                 message="import confirmation request is invalid",
             )
         request_id, task_id = _identifiers(request, body)
+        replay = _replay_response(request, body, replay_cache)
+        if replay is not None:
+            return replay
         decisions = body.get("decisions")
         if (
             body.get("schema_version") != SCHEMA_VERSION
             or body.get("operation") != "profile.import.confirm"
+            or not is_contract_id(body.get("request_id"))
+            or not is_contract_id(body.get("task_id"))
             or not isinstance(body.get("profile_id"), str)
             or not isinstance(body.get("expected_profile_version"), int)
             or body.get("expected_profile_version", -1) < 0
@@ -250,19 +279,56 @@ def _router(import_service: ImportService) -> APIRouter:
                 code="INVALID_FIELD_VALUE",
                 message="import confirmation request is invalid",
             )
-        return JSONResponse(
-            {
-                "schema_version": SCHEMA_VERSION,
-                "request_id": request_id,
-                "task_id": task_id,
-                "operation": "profile.import.confirm.result",
-                "task_state": "completed",
-                **result,
-            }
-        )
+        payload = {
+            "schema_version": SCHEMA_VERSION,
+            "request_id": request_id,
+            "task_id": task_id,
+            "operation": "profile.import.confirm.result",
+            "task_state": "completed",
+            **result,
+        }
+        replay_cache.remember(request_id, body, payload)
+        return JSONResponse(payload)
+
+    @router.post("/v0/profile/import/cancel")
+    @_serialized_mutation(replay_cache)
+    async def cancel(request: Request, body: object = Body(...)) -> JSONResponse:
+        request.state.operation = "profile.import.cancel"
+        if (
+            not isinstance(body, dict)
+            or set(body) - _CANCEL_KEYS
+            or body.get("schema_version") != SCHEMA_VERSION
+            or body.get("operation") != "profile.import.cancel"
+            or not is_contract_id(body.get("request_id"))
+            or not is_contract_id(body.get("task_id"))
+        ):
+            return _bad(
+                request,
+                request_id="local-request",
+                task_id="local-task",
+                code="INVALID_FIELD_VALUE",
+                message="import cancellation request is invalid",
+            )
+        request_id, task_id = _identifiers(request, body)
+        replay = _replay_response(request, body, replay_cache)
+        if replay is not None:
+            return replay
+        import_service.cancel(task_id)
+        payload = {
+            "schema_version": SCHEMA_VERSION,
+            "request_id": request_id,
+            "task_id": task_id,
+            "operation": "profile.import.cancel.result",
+            "task_state": "completed",
+            "cancelled": True,
+        }
+        replay_cache.remember(request_id, body, payload)
+        return JSONResponse(payload)
 
     return router
 
 
-def register_import_routes(app: Any, import_service: ImportService) -> None:
-    app.include_router(_router(import_service))
+def register_import_routes(
+    app: Any, import_service: ImportService, *, replay_cache: _RequestReplayCache | None = None
+) -> None:
+    app.include_router(_router(import_service, replay_cache or _RequestReplayCache()))

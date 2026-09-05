@@ -30,8 +30,10 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
     } finally { setBusy(false); }
   };
 
-  const decide = (candidateId: string, decision: "accept" | "reject") => {
-    setCandidates((items) => items.map((item) => item.candidate_id === candidateId ? { ...item, _decision: decision } as ImportCandidate : item));
+  const decide = (candidateId: string, decision: "accept" | "modify" | "reject", value?: string) => {
+    setCandidates((items) => items.map((item) => item.candidate_id === candidateId
+      ? { ...item, ...(value === undefined ? {} : { _value: value }), _decision: decision } as ImportCandidate
+      : item));
   };
 
   const confirm = async () => {
@@ -42,13 +44,16 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
         task_id: taskId,
         profile_id: profileId,
         expected_profile_version: snapshot.profile_version,
-        decisions: candidates
-          .map((candidate) => ({
+        decisions: candidates.flatMap((candidate) => {
+          const state = candidate as ImportCandidate & { _decision?: "accept" | "modify" | "reject"; _value?: string };
+          if (!state._decision) return [];
+          return [{
             candidate_id: candidate.candidate_id,
-            decision: (candidate as ImportCandidate & { _decision?: "accept" | "reject" })._decision,
+            decision: state._decision,
+            ...(state._value === undefined ? {} : { value: state._value }),
             user_confirmed: true as const,
-          }))
-          .filter((decision): decision is { candidate_id: string; decision: "accept" | "reject"; user_confirmed: true } => decision.decision !== undefined),
+          }];
+        }),
       });
       setCandidates([]); setTaskId(null); setFile(null);
       setMessage(`已写入 ${result.written_field_ids.length} 个字段`);
@@ -58,7 +63,13 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
     } finally { setBusy(false); }
   };
 
-  const cancel = () => {
+  const cancel = async () => {
+    if (taskId && client.importCancel) {
+      try { await client.importCancel(taskId); } catch (error) {
+        onError(error instanceof Error ? error.message : "导入取消失败");
+        return;
+      }
+    }
     setCandidates([]);
     setTaskId(null);
     setFile(null);
@@ -69,22 +80,33 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
   return (
     <section aria-labelledby="import-title">
       <h2 id="import-title">导入文档</h2>
-      <input aria-label="选择 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => setFile(event.target.files?.[0] ?? null)} disabled={busy || saving} />
+      <input aria-label="选择 PDF 或 DOCX" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => {
+        setCandidates([]);
+        setTaskId(null);
+        setMessage(null);
+        setFile(event.target.files?.[0] ?? null);
+      }} disabled={busy || saving} />
       <button type="button" onClick={() => void preview()} disabled={!file || busy || saving}>解析预览</button>
       {message ? <p role="status">{message}</p> : null}
       {candidates.length > 0 ? <>
         <h3>待确认候选</h3>
         {candidates.map((candidate) => {
-          const state = (candidate as ImportCandidate & { _decision?: "accept" | "reject" })._decision;
+          const state = (candidate as ImportCandidate & { _decision?: "accept" | "modify" | "reject" })._decision;
           return <article key={candidate.candidate_id}>
             <p><strong>{candidate.label}</strong>：{String(candidate.value)}</p>
             <p>来源：{candidate.source.location ?? candidate.source.document_ref ?? "文档"}；置信度：{Math.round(candidate.confidence * 100)}%</p>
+            {candidate.evidence?.length ? <p>证据：{candidate.evidence.join("；")}</p> : null}
             {candidate.existing_value_conflict ? <p role="alert">已有值：{String(candidate.existing_value)}，确认后才会替换</p> : null}
             <button type="button" onClick={() => decide(candidate.candidate_id, "accept")} aria-pressed={state === "accept"}>接受</button>
+            <input aria-label={`修改 ${candidate.label}`} defaultValue={String(candidate.value)} disabled={busy || saving} />
+            <button type="button" onClick={(event) => {
+              const input = event.currentTarget.previousElementSibling as HTMLInputElement | null;
+              decide(candidate.candidate_id, "modify", input?.value ?? String(candidate.value));
+            }} aria-pressed={state === "modify"}>使用修改值</button>
             <button type="button" onClick={() => decide(candidate.candidate_id, "reject")} aria-pressed={state === "reject"}>拒绝</button>
           </article>;
         })}
-        <button type="button" onClick={cancel} disabled={busy || saving}>取消导入</button>
+        <button type="button" onClick={() => void cancel()} disabled={busy || saving}>取消导入</button>
         <button type="button" onClick={() => void confirm()} disabled={busy || saving}>确认写入已接受字段</button>
       </> : null}
     </section>

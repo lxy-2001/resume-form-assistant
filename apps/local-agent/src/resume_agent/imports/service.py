@@ -31,6 +31,7 @@ class ImportTask:
     candidates: tuple[dict[str, Any], ...]
     created_at: datetime
     profile_version: int
+    profile_id: str
 
 
 class ImportService:
@@ -64,11 +65,12 @@ class ImportService:
         evidence: str,
         confidence: float,
         label: str,
+        occurrence: int = 1,
         sensitivity: Sensitivity = Sensitivity.NORMAL,
         existing_value: Any | None = None,
     ) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "candidate_id": f"{task_id}-{field_id.replace('.', '-')}",
+            "candidate_id": f"{task_id}-{field_id.replace('.', '-')}-{occurrence}",
             "field_id": field_id,
             "label": label,
             "field_type": field_type.value,
@@ -93,7 +95,7 @@ class ImportService:
         self, task_id: str, document: ParsedDocument, existing: Mapping[str, Any]
     ) -> tuple[dict[str, Any], ...]:
         result: list[dict[str, Any]] = []
-        for segment in document.segments:
+        for occurrence, segment in enumerate(document.segments, start=1):
             email = _EMAIL_RE.search(segment.text)
             if email:
                 definition = get_standard_field("contact.email")
@@ -108,6 +110,7 @@ class ImportService:
                         evidence=segment.text,
                         confidence=0.96,
                         label=definition.label if definition else "邮箱",
+                        occurrence=occurrence,
                         existing_value=existing.get("contact.email"),
                     )
                 )
@@ -125,6 +128,7 @@ class ImportService:
                         evidence=segment.text,
                         confidence=0.94,
                         label=definition.label if definition else "手机号",
+                        occurrence=occurrence,
                         existing_value=existing.get("contact.phone"),
                     )
                 )
@@ -142,6 +146,7 @@ class ImportService:
                         evidence=segment.text,
                         confidence=0.9,
                         label=definition.label if definition else "姓名",
+                        occurrence=occurrence,
                         existing_value=existing.get("person.full_name"),
                     )
                 )
@@ -172,6 +177,7 @@ class ImportService:
                         evidence=segment.text,
                         confidence=0.9,
                         label=definition.label if definition else date.group("label"),
+                        occurrence=occurrence,
                         existing_value=existing.get(field_id),
                     )
                 )
@@ -189,6 +195,7 @@ class ImportService:
                         evidence=segment.text,
                         confidence=0.97,
                         label=definition.label if definition else "身份证/证件号码",
+                        occurrence=occurrence,
                         sensitivity=Sensitivity.HIGHLY_SENSITIVE,
                         existing_value=existing.get("person.id_number"),
                     )
@@ -207,6 +214,7 @@ class ImportService:
             candidates=self._candidates(identifier, document, existing),
             created_at=datetime.now(UTC),
             profile_version=current.profile_version,
+            profile_id=current.profile_id,
         )
         self._tasks[identifier] = task
         return task
@@ -222,6 +230,8 @@ class ImportService:
         task = self._task(task_id)
         if not profile_id or expected_profile_version < 0:
             raise ValueError("profile confirmation metadata is invalid")
+        if profile_id != task.profile_id:
+            raise ValueError("profile does not match import preview")
         if expected_profile_version != task.profile_version:
             raise ValueError("profile version does not match import preview")
         if not decisions:

@@ -17,6 +17,8 @@
     {"$ref": "#/$defs/ProfileImportPreview"},
     {"$ref": "#/$defs/ProfileImportConfirmRequest"},
     {"$ref": "#/$defs/ProfileImportConfirmResponse"},
+    {"$ref": "#/$defs/ProfileImportCancelRequest"},
+    {"$ref": "#/$defs/ProfileImportCancelResponse"},
     {"$ref": "#/$defs/ScanRequest"},
     {"$ref": "#/$defs/ScanResponse"},
     {"$ref": "#/$defs/MatchRequest"},
@@ -1220,6 +1222,31 @@
               "type": "array",
               "items": {"$ref": "#/$defs/Warning"}
             }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileImportCancelRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/RequestEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation"],
+          "properties": {"operation": {"const": "profile.import.cancel"}}
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ProfileImportCancelResponse": {
+      "allOf": [
+        {"$ref": "#/$defs/ResponseEnvelope"},
+        {
+          "type": "object",
+          "required": ["operation", "cancelled"],
+          "properties": {
+            "operation": {"const": "profile.import.cancel.result"},
+            "cancelled": {"const": true}
           }
         }
       ],

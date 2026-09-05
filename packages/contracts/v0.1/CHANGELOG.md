@@ -6,6 +6,8 @@
 
 - Added the F002 document import preview/confirmation examples and fields for local content
   transport, candidate sensitivity, existing-value conflicts, and resulting profile versions.
+- Added local import cancellation request/response contracts so cancelling a preview invalidates
+  its short-lived task before any confirmation can write.
 
 - Added precise `field_values` selectors for profile deletion and export so one scoped value can
   be selected when a field ID exists in multiple scopes.

@@ -30,6 +30,7 @@ python -m venv .venv
 不足的 PDF 会尝试使用本机 Tesseract，未安装 OCR 引擎时返回 `OCR_UNAVAILABLE`。预览只保留
 短生命周期任务中的候选，不写入资料库。`POST /v0/profile/import/confirm` 必须携带用户对
 每个候选的确认决定和预览时的资料版本；只有确认后的字段才复用 F001 的版本校验写入。
+`POST /v0/profile/import/cancel` 会在服务端使预览任务失效，避免仅清理页面状态而留下可写入的旧任务。
 远程模型默认关闭，F002 不上传文件或候选。
 
 ## 数据安全与恢复边界

@@ -15,6 +15,8 @@ from .models import ParsedSegment
 from .ocr import OcrEngine, run_ocr
 from .pdf_parser import parse_pdf
 
+MAX_PDF_PAGES = 50
+
 
 @dataclass(frozen=True, slots=True)
 class ParsedDocument:
@@ -49,6 +51,9 @@ def parse_document(
         )
     if document.media_type != PDF_MEDIA_TYPE:
         raise UnsupportedDocumentError("document type is not supported")
+    page_count = len(PdfReader(document.path).pages)
+    if page_count > MAX_PDF_PAGES:
+        raise UnsupportedDocumentError("document exceeds the configured page limit")
     segments = pdf_parser(document.path)
     if segments and ocr_mode != "force":
         return ParsedDocument(
@@ -71,7 +76,6 @@ def parse_document(
         )
     if ocr_engine is None:
         raise OcrUnavailableError("local OCR engine is unavailable")
-    page_count = len(PdfReader(document.path).pages)
     ocr_segments: list[ParsedSegment] = []
     for page_number in range(1, page_count + 1):
         ocr_segments.extend(run_ocr(document.path, engine=ocr_engine, page_number=page_number))

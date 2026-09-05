@@ -145,6 +145,7 @@ describe("ProfilePage", () => {
         source: { kind: "import", location: "paragraph 1" },
         confidence: 0.96,
         requires_confirmation: true,
+        evidence: ["邮箱 example@example.test"],
         warnings: [],
       }],
       warnings: [],
@@ -157,7 +158,8 @@ describe("ProfilePage", () => {
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "解析预览" }));
 
-    expect(await screen.findByText(/example@example.test/)).toBeInTheDocument();
+    expect(await screen.findByLabelText("修改 邮箱")).toHaveValue("example@example.test");
+    expect(screen.getByText(/证据：邮箱 example@example.test/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "接受" }));
     fireEvent.click(screen.getByRole("button", { name: "确认写入已接受字段" }));
 

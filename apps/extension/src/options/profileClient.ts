@@ -214,6 +214,7 @@ export interface ImportConfirmResult {
   profile_version?: number;
   warnings: Array<{ code?: string; message?: string; severity?: string }>;
 }
+export interface ImportCancelResult { cancelled: boolean; }
 
 
 export interface ProfileClient {
@@ -223,6 +224,7 @@ export interface ProfileClient {
   export?(input: ProfileExportInput): Promise<ProfileExportResult>;
   importPreview?(file: File, taskId?: string): Promise<ImportPreviewResult>;
   importConfirm?(input: ImportConfirmInput): Promise<ImportConfirmResult>;
+  importCancel?(taskId: string): Promise<ImportCancelResult>;
 }
 
 export class ProfileClientError extends Error {
@@ -399,6 +401,19 @@ export class HttpProfileClient implements ProfileClient {
       body: JSON.stringify({ schema_version: "0.1", ...identity, operation: "profile.import.confirm", ...input }),
     });
     return this.parseResponse<ImportConfirmResult>(response, "document confirmation failed");
+  }
+
+  async importCancel(taskId: string): Promise<ImportCancelResult> {
+    const identity = this.nextIdentity("import-cancel");
+    const response = await fetch(`${this.baseUrl}/v0/profile/import/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        schema_version: "0.1", ...identity, task_id: taskId,
+        operation: "profile.import.cancel",
+      }),
+    });
+    return this.parseResponse<ImportCancelResult>(response, "document cancellation failed");
   }
 
   private identityFor(

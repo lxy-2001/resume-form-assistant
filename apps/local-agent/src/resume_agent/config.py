@@ -16,8 +16,10 @@ from typing import Any
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
-DEFAULT_REQUEST_LIMIT = 1_048_576
-MAX_REQUEST_LIMIT = 16 * 1024 * 1024
+# Import previews carry base64-encoded local documents; allow the configured
+# 16 MiB document limit plus JSON/base64 envelope overhead.
+DEFAULT_REQUEST_LIMIT = 24 * 1024 * 1024
+MAX_REQUEST_LIMIT = 32 * 1024 * 1024
 DEFAULT_APP_NAME = "resume-agent"
 DEFAULT_NAMESPACE = "resume_agent"
 DEFAULT_ALLOWED_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")

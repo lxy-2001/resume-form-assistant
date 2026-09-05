@@ -106,3 +106,83 @@ def test_import_preview_and_confirm_round_trip(fake_profile_store, tmp_path) -> 
     _validator("ProfileImportConfirmResponse").validate(confirmed.json())
     assert confirmed.json()["written_field_ids"] == ["contact.email"]
     assert fake_profile_store.snapshot.fields[0].value == "example@example.test"
+    replay = client.post(
+        "/v0/profile/import/confirm",
+        json={
+            "schema_version": "0.1",
+            "request_id": "req-confirm",
+            "task_id": "task-roundtrip",
+            "operation": "profile.import.confirm",
+            "profile_id": "default-profile",
+            "expected_profile_version": 0,
+            "decisions": [
+                {
+                    "candidate_id": candidate["candidate_id"],
+                    "decision": "accept",
+                    "user_confirmed": True,
+                }
+            ],
+        },
+    )
+    assert replay.status_code == 200
+    assert replay.json() == confirmed.json()
+
+
+def test_import_cancel_invalidates_preview_task(fake_profile_store) -> None:
+    from io import BytesIO
+
+    from docx import Document
+
+    document = Document()
+    document.add_paragraph("邮箱 example@example.test")
+    buffer = BytesIO()
+    document.save(buffer)
+    app = create_app(profile_service=ProfileService(fake_profile_store), require_loopback=False)
+    client = TestClient(app)
+    preview = client.post(
+        "/v0/profile/import/preview",
+        json={
+            "schema_version": "0.1",
+            "request_id": "req-cancel-preview",
+            "task_id": "task-cancel-preview",
+            "operation": "profile.import.preview",
+            "source": {
+                "document_id": "doc-cancel",
+                "filename": "resume.docx",
+                "media_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            },
+            "content_base64": base64.b64encode(buffer.getvalue()).decode(),
+            "consent": {"remote_model_allowed": False},
+        },
+    )
+    candidate = preview.json()["candidates"][0]
+    cancelled = client.post(
+        "/v0/profile/import/cancel",
+        json={
+            "schema_version": "0.1",
+            "request_id": "req-cancel",
+            "task_id": "task-cancel-preview",
+            "operation": "profile.import.cancel",
+        },
+    )
+    assert cancelled.status_code == 200
+    confirm = client.post(
+        "/v0/profile/import/confirm",
+        json={
+            "schema_version": "0.1",
+            "request_id": "req-after-cancel",
+            "task_id": "task-cancel-preview",
+            "operation": "profile.import.confirm",
+            "profile_id": "default-profile",
+            "expected_profile_version": 0,
+            "decisions": [
+                {
+                    "candidate_id": candidate["candidate_id"],
+                    "decision": "accept",
+                    "user_confirmed": True,
+                }
+            ],
+        },
+    )
+    assert confirm.status_code == 400
+    assert fake_profile_store.write_calls == 0
