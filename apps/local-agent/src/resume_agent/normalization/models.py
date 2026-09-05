@@ -77,6 +77,8 @@ class RecordCandidate:
     requires_confirmation: bool = True
     issues: tuple[NormalizationIssue, ...] = ()
     normalized_value: Any | None = None
+    match_reason: str | None = None
+    existing_record: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -89,6 +91,8 @@ class RecordCandidate:
             "status": self.status,
             "requires_confirmation": True,
             "normalized_value": self.normalized_value,
+            **({"match_reason": self.match_reason} if self.match_reason else {}),
+            **({"existing_record": self.existing_record} if self.existing_record else {}),
             "issues": [
                 {"code": issue.code, "message": issue.message, "severity": issue.severity}
                 for issue in self.issues

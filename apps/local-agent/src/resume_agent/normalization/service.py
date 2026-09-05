@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from resume_agent.imports.service import ImportService
-from resume_agent.normalization.merge import classify_record_status
+from resume_agent.normalization.merge import classify_record_status, record_match_details
 from resume_agent.normalization.models import (
     NormalizationIssue,
     NormalizationTask,
@@ -121,7 +121,12 @@ class NormalizationService:
             )
             candidates.append(candidate)
         records = tuple(
-            replace(record, status=classify_record_status(record, current.records))
+            replace(
+                record,
+                status=classify_record_status(record, current.records),
+                match_reason=record_match_details(record, current.records)[0],
+                existing_record=record_match_details(record, current.records)[1],
+            )
             for record in group_record_candidates(tuple(candidates), identifier)
         )
         task = NormalizationTask(
@@ -274,6 +279,10 @@ class NormalizationService:
         task = self._tasks.get(task_id)
         if task is None:
             return False
+        if datetime.now(UTC) - task.created_at > self._task_ttl:
+            task.state = "expired"
+            self._tasks.pop(task_id, None)
+            raise ValueError("normalization task has expired")
         task.state = "cancelled"
         self._tasks.pop(task_id, None)
         return True

@@ -13,6 +13,7 @@ from resume_agent.api.profile_routes import (
     _serialized_mutation,
 )
 from resume_agent.normalization.service import NormalizationService
+from resume_agent.profile.errors import ProfileError
 from resume_agent.profile.models import is_contract_id
 
 _PREVIEW_KEYS = {
@@ -67,6 +68,15 @@ def _error_code(message: str) -> str:
     return "INVALID_FIELD_VALUE"
 
 
+def _profile_error_response(
+    request: Request, exc: ProfileError, *, request_id: str, task_id: str
+) -> JSONResponse:
+    status = 409 if exc.code in {"STALE_PROFILE_VERSION", "PROFILE_NOT_FOUND"} else 500
+    return _bad(
+        request, exc.message, request_id=request_id, task_id=task_id, code=exc.code, status=status
+    )
+
+
 def register_normalization_routes(
     app: Any, service: NormalizationService, *, replay_cache: _RequestReplayCache
 ) -> None:
@@ -97,13 +107,15 @@ def register_normalization_routes(
             task = service.preview(
                 str(data["source_task_id"]), profile_id=str(data["profile_id"]), task_id=task_id
             )
-        except ValueError:
+        except ProfileError as exc:
+            return _profile_error_response(request, exc, request_id=request_id, task_id=task_id)
+        except ValueError as exc:
             return _bad(
                 request,
-                "normalization source task is unavailable",
+                str(exc),
                 request_id=request_id,
                 task_id=task_id,
-                code="TASK_UNAVAILABLE",
+                code=_error_code(str(exc)),
                 status=409,
             )
         return JSONResponse(
@@ -158,6 +170,8 @@ def register_normalization_routes(
                 profile_id=str(data["profile_id"]),
                 expected_profile_version=int(data["expected_profile_version"]),
             )
+        except ProfileError as exc:
+            return _profile_error_response(request, exc, request_id=request_id, task_id=task_id)
         except (TypeError, ValueError) as exc:
             return _bad(
                 request,
@@ -198,7 +212,18 @@ def register_normalization_routes(
                 request_id=request_id,
                 task_id=task_id,
             )
-        if not service.cancel(task_id):
+        try:
+            cancelled = service.cancel(task_id)
+        except ValueError as exc:
+            return _bad(
+                request,
+                str(exc),
+                request_id=request_id,
+                task_id=task_id,
+                code=_error_code(str(exc)),
+                status=409,
+            )
+        if not cancelled:
             return _bad(
                 request,
                 "normalization task is unavailable",

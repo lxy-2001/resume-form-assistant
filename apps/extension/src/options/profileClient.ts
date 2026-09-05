@@ -237,6 +237,8 @@ export interface NormalizedCandidate {
   evidence?: string[];
   warnings?: Array<{ code?: string; message?: string; severity?: string }>;
   conversion_note?: string;
+  match_reason?: string;
+  existing_record?: Record<string, unknown>;
 }
 export interface NormalizationPreviewResult {
   task_id: string;

@@ -1307,6 +1307,8 @@
         "status": {"type": "string", "enum": ["new", "unchanged", "possible_duplicate", "conflict", "unclassified", "invalid"]},
         "requires_confirmation": {"const": true},
         "normalized_value": {"$ref": "#/$defs/JsonValue"},
+        "match_reason": {"$ref": "#/$defs/NonEmptyString"},
+        "existing_record": {"$ref": "#/$defs/JsonValue"},
         "issues": {"type": "array", "items": {"$ref": "#/$defs/NormalizationIssue"}}
       },
       "additionalProperties": false

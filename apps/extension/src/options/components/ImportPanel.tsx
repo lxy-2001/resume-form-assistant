@@ -44,7 +44,10 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
     }
     return candidate.value;
   };
-  const candidateIssues = (candidate: ReviewCandidate) => "issues" in candidate ? candidate.issues : candidate.warnings;
+  const candidateIssues = (candidate: ReviewCandidate) => {
+    if (!("issues" in candidate)) return candidate.warnings;
+    return [...(candidate.issues ?? []), ...(candidate.warnings ?? [])];
+  };
   const conflict = (candidate: ReviewCandidate) => "status" in candidate ? candidate.status === "conflict" : candidate.existing_value_conflict;
   const decide = (candidateId: string, decision: Decision, value?: string) => setCandidates((items) => items.map((item) => item.candidate_id === candidateId ? { ...item, ...(value === undefined ? {} : { _value: value }), _decision: decision } as unknown as ReviewCandidate : item));
 
@@ -94,6 +97,8 @@ export function ImportPanel({ client, profileId, snapshot, saving, onComplete, o
           <p>来源：{candidate.source.location ?? candidate.source.document_ref ?? "文档"}；置信度：{Math.round(candidate.confidence * 100)}%</p>
           {"evidence" in candidate && candidate.evidence?.length ? <p>证据：{candidate.evidence.join("；")}</p> : null}
           {conflict(candidate) ? <p role="alert">已有值：{String(candidate.existing_value)}，确认后才会替换</p> : null}
+          {"match_reason" in candidate && candidate.match_reason ? <p role="alert">重复依据：{String(candidate.match_reason)}</p> : null}
+          {"existing_record" in candidate && candidate.existing_record ? <p>已有记录摘要：{JSON.stringify(candidate.existing_record)}</p> : null}
           {"sensitivity" in candidate && candidate.sensitivity !== "normal" ? <p role="alert">敏感字段：需要明确确认</p> : null}
           {"conversion_note" in candidate && candidate.conversion_note ? <p>转换：{candidate.conversion_note}</p> : null}
           {issues?.length ? <p role="alert">问题：{issues.map((item) => item.message).filter(Boolean).join("；")}</p> : null}
