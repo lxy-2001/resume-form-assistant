@@ -1,8 +1,8 @@
 # Feature Specification: 文档资料解析与确认导入
 
-**Feature Branch**: `feat/F002-document-parsing`  
-**Created**: 2026-09-05  
-**Status**: Draft  
+**Feature Branch**: `feat/F002-document-parsing`
+**Created**: 2026-09-05
+**Status**: Draft
 **Input**: PDF、DOCX、图像型 PDF 的本地解析，展示候选字段、来源和置信度，用户确认后写入 F001 资料库。
 
 ## Overview
