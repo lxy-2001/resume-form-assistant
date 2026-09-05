@@ -19,6 +19,28 @@ afterEach(() => {
 });
 
 describe("HttpProfileClient request identities", () => {
+  it("sends document bytes to the local preview endpoint with remote consent disabled", async () => {
+    let request: Record<string, unknown> | undefined;
+    vi.stubGlobal("fetch", vi.fn((_: string, init?: RequestInit) => {
+      request = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Promise.resolve(new Response(JSON.stringify({
+        document_id: "doc-1", candidates: [], warnings: [], remote_data_sent: false,
+        consent_recorded: false,
+      }), { status: 200 }));
+    }));
+
+    const file = { name: "resume.pdf", type: "application/pdf", size: 6, arrayBuffer: async () => new TextEncoder().encode("resume").buffer } as unknown as File;
+    await new HttpProfileClient().importPreview!(file, "import-task");
+
+    expect(request).toMatchObject({
+      operation: "profile.import.preview",
+      task_id: "import-task",
+      content_base64: "cmVzdW1l",
+      consent: { remote_model_allowed: false },
+      source: { media_type: "application/pdf", filename: "resume.pdf", size_bytes: 6 },
+    });
+  });
+
   it("rejects non-loopback or credential-bearing agent URLs", () => {
     expect(() => new HttpProfileClient("https://evil.example")).toThrow(/loopback/);
     expect(() => new HttpProfileClient("http://user:pass@127.0.0.1:8765")).toThrow(/credentials/);

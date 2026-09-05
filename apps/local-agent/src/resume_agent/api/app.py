@@ -64,7 +64,14 @@ def _error_payload(
         "operation": "error",
         "error": error,
     }
-    if failed_operation in {"profile.read", "profile.upsert", "profile.delete", "profile.export"}:
+    if failed_operation in {
+        "profile.read",
+        "profile.upsert",
+        "profile.delete",
+        "profile.export",
+        "profile.import.preview",
+        "profile.import.confirm",
+    }:
         payload["failed_operation"] = failed_operation
     return payload
 

@@ -3,6 +3,8 @@
   "request_id": "req-import-confirm-001",
   "task_id": "task-import-001",
   "operation": "profile.import.confirm",
+  "profile_id": "default-profile",
+  "expected_profile_version": 0,
   "decisions": [
     {
       "candidate_id": "import-candidate-email",

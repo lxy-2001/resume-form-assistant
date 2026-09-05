@@ -17,6 +17,10 @@ npm run build
 
 F001 的 Options Page 用于维护本地资料、查看元数据、受控导出和确认删除；扩展 UI 不直接调用模型。
 
+Options Page 同时提供 PDF/DOCX 导入：文件发送到本地 Agent 进行预览后，页面展示来源、证据、
+置信度和已有值冲突。候选默认不写入，用户逐项接受或拒绝后才会提交确认；取消或关闭预览不会
+修改资料库。图像型 PDF 是否使用 OCR 由本地服务报告，远程模型同意默认关闭。
+
 F001 当前交付的是可独立运行的 Vite Options Page，不包含浏览器扩展 manifest、content
 script 或商店打包物。安装为 Chrome/Edge 扩展属于后续 F004/F017；打包后需要在本地服务中
 把对应的精确扩展 origin 加入 `RESUME_AGENT_ALLOWED_ORIGINS`，不能使用 `*`。

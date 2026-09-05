@@ -601,9 +601,9 @@ def _body(request: Request, body: object) -> tuple[dict[str, Any] | None, JSONRe
     return body, None
 
 
-def _router(service: ProfileService) -> APIRouter:
+def _router(service: ProfileService, replay_cache: _RequestReplayCache | None = None) -> APIRouter:
     router = APIRouter()
-    replay_cache = _RequestReplayCache()
+    replay_cache = replay_cache or _RequestReplayCache()
 
     @router.post("/v0/profile/read")
     async def profile_read(request: Request, body: object = Body(...)) -> JSONResponse:
@@ -1024,7 +1024,12 @@ def _lifecycle_router(service: ProfileService, replay_cache: _RequestReplayCache
 
 
 def register_profile_routes(app: Any, service: ProfileService) -> None:
-    app.include_router(_router(service))
+    replay_cache = _RequestReplayCache()
+    app.include_router(_router(service, replay_cache))
+    from resume_agent.api.import_routes import register_import_routes
+    from resume_agent.imports.service import ImportService
+
+    register_import_routes(app, ImportService(service), replay_cache=replay_cache)
 
 
 __all__ = ["register_profile_routes"]

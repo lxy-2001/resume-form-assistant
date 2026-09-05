@@ -54,6 +54,7 @@
   契约没有提交申请、下一步、验证码、OTP、签名、支付或密码操作。
 - `ProfileUpsertRequest.user_confirmed`、`ProfileDeleteRequest.user_confirmed`、`ProfileExportRequest.user_confirmed`、`ReviewDecision.user_confirmed`、`ImportDecision.user_confirmed`、`UndoRequest.user_confirmed`
   和已执行动作的 `approved` 必须为 `true`。
+- `profile.import.confirm` 必须携带 `profile_id` 和 `expected_profile_version`，确认写入沿用 F001 的版本保护。
 - 资料写入、删除和导出必须携带 `profile_id` 与 `expected_profile_version`；版本不一致时返回
   `STALE_PROFILE_VERSION`，不得静默覆盖较新的资料。
 - 空资料的 `profile_version` 从 `0` 开始；每次成功写入或删除只增加一次。读取和导出不改变
@@ -68,6 +69,8 @@
   携带匹配的 `Precondition`，由执行端在写入前再次检查。
 - 远程模型调用通过 `Consent` 表示。没有用户同意时，`remote_model_allowed` 必须为
   `false`，并且响应不得声称发送了远程资料。
+- `profile.import.preview` 的 `content_base64`（若使用）只用于把用户当前选择的本地文件传给
+  loopback 服务；服务不得把它写入普通日志、资料库或响应，并必须执行服务端请求大小限制。
 
 ## 示例
 

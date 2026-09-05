@@ -167,12 +167,64 @@ export interface ProfileExportResult {
   warnings: Array<{ code?: string; message?: string; severity?: string }>;
 }
 
+export interface ImportCandidate {
+  candidate_id: string;
+  field_id: string;
+  label: string;
+  field_type: FieldType;
+  value: ProfileValue;
+  source: { kind: string; document_ref?: string; location?: string; [key: string]: unknown };
+  confidence: number;
+  requires_confirmation: true;
+  sensitivity?: "normal" | "sensitive" | "highly_sensitive";
+  existing_value_conflict?: boolean;
+  existing_value?: ProfileValue;
+  evidence?: string[];
+  warnings: Array<{ code?: string; message?: string; severity?: string }>;
+}
+
+export interface ImportPreviewResult {
+  task_id?: string;
+  document_id: string;
+  candidates: ImportCandidate[];
+  warnings: Array<{ code?: string; message?: string; severity?: string }>;
+  ocr_used?: boolean;
+  model_used?: boolean;
+  remote_data_sent?: boolean;
+  consent_recorded?: boolean;
+}
+
+export interface ImportConfirmInput {
+  request_id?: string;
+  task_id: string;
+  profile_id: string;
+  expected_profile_version: number;
+  decisions: Array<{
+    candidate_id: string;
+    decision: "accept" | "modify" | "reject";
+    value?: ProfileValue;
+    target_scope?: "global" | "website" | "application";
+    user_confirmed: true;
+  }>;
+}
+
+export interface ImportConfirmResult {
+  written_field_ids: string[];
+  rejected_candidate_ids: string[];
+  profile_version?: number;
+  warnings: Array<{ code?: string; message?: string; severity?: string }>;
+}
+export interface ImportCancelResult { cancelled: boolean; }
+
 
 export interface ProfileClient {
   read(profileId: string): Promise<ProfileSnapshot>;
   upsert(input: ProfileUpsertInput): Promise<ProfileSnapshot>;
   delete?(input: ProfileDeleteInput): Promise<ProfileDeleteResult>;
   export?(input: ProfileExportInput): Promise<ProfileExportResult>;
+  importPreview?(file: File, taskId?: string): Promise<ImportPreviewResult>;
+  importConfirm?(input: ImportConfirmInput): Promise<ImportConfirmResult>;
+  importCancel?(taskId: string): Promise<ImportCancelResult>;
 }
 
 export class ProfileClientError extends Error {
@@ -318,6 +370,52 @@ export class HttpProfileClient implements ProfileClient {
     return this.parseResponse<ProfileExportResult>(response, "profile export failed");
   }
 
+  async importPreview(file: File, taskId?: string): Promise<ImportPreviewResult> {
+    const identity = this.nextIdentity("import-preview");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const contentBase64 = btoa(binary);
+    const response = await fetch(`${this.baseUrl}/v0/profile/import/preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        schema_version: "0.1",
+        ...identity,
+        ...(taskId ? { task_id: taskId } : {}),
+        operation: "profile.import.preview",
+        source: { document_id: `${identity.task_id}-document`, filename: file.name, media_type: file.type || mediaTypeForName(file.name), size_bytes: file.size },
+        content_base64: contentBase64,
+        consent: { remote_model_allowed: false },
+        ocr_mode: "auto",
+      }),
+    });
+    return this.parseResponse<ImportPreviewResult>(response, "document preview failed");
+  }
+
+  async importConfirm(input: ImportConfirmInput): Promise<ImportConfirmResult> {
+    const identity = this.identityFor("import-confirm", input);
+    const response = await fetch(`${this.baseUrl}/v0/profile/import/confirm`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ schema_version: "0.1", ...identity, operation: "profile.import.confirm", ...input }),
+    });
+    return this.parseResponse<ImportConfirmResult>(response, "document confirmation failed");
+  }
+
+  async importCancel(taskId: string): Promise<ImportCancelResult> {
+    const identity = this.nextIdentity("import-cancel");
+    const response = await fetch(`${this.baseUrl}/v0/profile/import/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        schema_version: "0.1", ...identity, task_id: taskId,
+        operation: "profile.import.cancel",
+      }),
+    });
+    return this.parseResponse<ImportCancelResult>(response, "document cancellation failed");
+  }
+
   private identityFor(
     operation: string,
     input: { request_id?: string; task_id?: string },
@@ -348,4 +446,11 @@ export class HttpProfileClient implements ProfileClient {
     }
     return (payload.profile ?? payload) as T;
   }
+}
+
+function mediaTypeForName(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  return "application/octet-stream";
 }

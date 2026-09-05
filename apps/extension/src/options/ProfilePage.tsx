@@ -16,6 +16,7 @@ import { CustomFieldEditor } from "./components/CustomFieldEditor";
 import { StandardFieldEditor2 as StandardFieldEditor } from "./components/StandardFieldEditor2";
 import { ProfileLifecycleDialogs } from "./components/ProfileLifecycleDialogs";
 import { ProfileMetadata } from "./components/ProfileMetadata";
+import { ImportPanel } from "./components/ImportPanel";
 
 interface ProfilePageProps {
   client: ProfileClient;
@@ -928,6 +929,14 @@ export function ProfilePage({ client, profileId }: ProfilePageProps) {
     <main aria-labelledby="profile-title">
       <h1 id="profile-title">我的简历资料</h1>
       <ProfileMetadata snapshot={snapshot} />
+      <ImportPanel
+        client={client}
+        profileId={profileId}
+        snapshot={snapshot}
+        saving={saving}
+        onComplete={() => setReadAttempt((attempt) => attempt + 1)}
+        onError={(message) => { setError(message); setMessage(null); }}
+      />
       {snapshot.is_empty && records.length === 0 ? <p>暂无资料，请先添加资料。</p> : null}
       {standardFieldOpen ? (
         <StandardFieldEditor
